@@ -1,0 +1,25 @@
+# Rust build outputs
+/target
+Cargo.lock.bak
+
+# Log files and crash dumps
+*.log
+*.dmp
+
+# IDE and tooling metadata
+.gemini/
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Prompt and internal planning specifications used to create this project
+Keyboard_Control_Center_Antigravity_Spec.md
+AI_RULES.md
+IMPLEMENTATION_PLAN.md
+ARCHITECTURE.md
+WORKFLOW.md
+HARDWARE_PROTOCOL.md
+UI_GUIDELINES.md
+SECURITY.md
+DEVICE_IDENTITY.md

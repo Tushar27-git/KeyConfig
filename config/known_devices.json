@@ -1,0 +1,14 @@
+[
+  {
+    "vendor_id": 9610,
+    "vendor_id_hex": "0x258A",
+    "product_id": 42,
+    "product_id_hex": "0x002A",
+    "manufacturer": "Sino Wealth Electronics Ltd.",
+    "product_name": "Cosmic Byte Pandora CBG K26",
+    "model_label": "Cosmic Byte Pandora CBG K26 (confirmed)",
+    "confirmed": true,
+    "verified_at": "2026-09-08T21:07:09+05:30",
+    "notes": "Verified via BusReportedDeviceDesc 'Gaming KB' and PnP hardware ID USB\\VID_258A&PID_002A"
+  }
+]

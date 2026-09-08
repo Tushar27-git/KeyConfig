@@ -1,0 +1,48 @@
+[package]
+name = "theasus"
+version = "0.1.0"
+edition = "2021"
+authors = ["Tushar"]
+description = "Theasus — Native Windows Keyboard Configuration, Remapping, and Diagnostics Control Center"
+
+[dependencies]
+# Native Desktop UI
+eframe = { version = "0.31", default-features = true }
+egui = "0.31"
+
+# Windows Low-Level Input & Win32 APIs
+windows = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_Threading",
+    "Win32_System_LibraryLoader",
+    "Win32_Devices_HumanInterfaceDevice",
+    "Win32_Graphics_Gdi",
+] }
+
+# Hardware HID Device Enumeration & Safe Inspection
+hidapi = "2.6"
+
+# Serialization & Persistence
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Concurrency & Fast Ring Buffers
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
+
+# Structured Logging & Diagnostics
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error Handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+panic = "abort"
+strip = true
