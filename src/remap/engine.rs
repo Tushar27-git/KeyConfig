@@ -15,16 +15,13 @@ impl RemapEngine {
     pub fn process_keystroke(
         vkey: VKey,
         state: KeyState,
-        origin: InputOrigin,
+        _origin: InputOrigin,
         extra_info: usize,
         active_profile: &Profile,
     ) -> (RemapAction, bool) {
-        // 1. Anti-recursion guard
+        // 1. Anti-recursion guard: synthesized keystrokes from Theasus carry our magic extra info tag
         if extra_info == KCC_MAGIC_EXTRA_INFO {
             return (RemapAction::SelfInjected, false);
-        }
-        if origin == InputOrigin::Injected {
-            return (RemapAction::PassThrough, false);
         }
 
         // 2. Physical keystroke lookup

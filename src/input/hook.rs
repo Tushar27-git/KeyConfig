@@ -15,7 +15,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WM_KEYUP, WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
-const LLKHF_INJECTED: u32 = 0x00000001;
+const LLKHF_INJECTED: u32 = 0x00000010;
 
 struct HookGlobalState {
     event_tx: Sender<InputEvent>,
@@ -159,13 +159,14 @@ unsafe extern "system" fn low_level_keyboard_proc(
                     scan_code,
                     state,
                     origin,
-                    action,
+                    action: action.clone(),
                     device_handle_raw: 0,
                 };
 
                 let _ = state_ctx.event_tx.try_send(event);
 
                 if intercept {
+                    tracing::info!("Hook intercepted key: VK 0x{:02X} -> action {:?}", raw_vk, action);
                     return LRESULT(1);
                 }
             }

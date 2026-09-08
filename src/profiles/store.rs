@@ -56,22 +56,13 @@ impl ProfileStore {
 
     pub fn save_profile(&self, profile: &Profile) -> Result<()> {
         let file_path = self.dir.join(format!("{}.json", profile.id));
-        let tmp_path = self.dir.join(format!("{}.json.tmp", profile.id));
-
         let json = serde_json::to_string_pretty(profile)
             .context("Failed to serialize profile to JSON")?;
 
-        // Atomic write
-        {
-            let mut file = File::create(&tmp_path)
-                .with_context(|| format!("Failed to create temp file {:?}", tmp_path))?;
-            file.write_all(json.as_bytes())
-                .context("Failed to write profile content")?;
-            file.sync_all().context("Failed to sync profile file")?;
-        }
-
-        fs::rename(&tmp_path, &file_path)
-            .with_context(|| format!("Failed to rename temp file to {:?}", file_path))?;
+        let mut file = File::create(&file_path)
+            .with_context(|| format!("Failed to create profile file {:?}", file_path))?;
+        file.write_all(json.as_bytes())
+            .context("Failed to write profile content")?;
 
         Ok(())
     }

@@ -228,8 +228,10 @@ impl AppState {
             self.event_log.push(event);
         }
 
-        // Recompute observed rate statistics
-        self.rate_stats = self.rate_calc.compute_stats();
+        // Recompute observed rate statistics only when new keystrokes arrive
+        if count > 0 {
+            self.rate_stats = self.rate_calc.compute_stats();
+        }
 
         // 3. Process hotplug trigger (WM_INPUT_DEVICE_CHANGE or background poll)
         if self.hotplug_trigger.swap(false, Ordering::SeqCst) {
