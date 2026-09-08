@@ -104,7 +104,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         // Live Event Stream Table
         let filtered = state.event_log.filtered_events();
 
-        egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
+        egui::ScrollArea::vertical()
+            .id_salt("diagnostics_event_stream_scroll")
+            .stick_to_bottom(true)
+            .show(ui, |ui| {
             ui.set_width(ui.available_width());
 
             // Header row

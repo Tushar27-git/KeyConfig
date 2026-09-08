@@ -38,8 +38,11 @@ fn main() -> Result<(), eframe::Error> {
     // Shared active profile for remapping engine
     let initial_profile = Arc::new(RwLock::new(Profile::new_default()));
 
+    // Shared capture active flag (disables OS key propagation during physical capture)
+    let capture_active = Arc::new(AtomicBool::new(false));
+
     // Spawn Low-Level Input Interception Hook (WH_KEYBOARD_LL)
-    let hook_supervisor = match InputHookSupervisor::start(event_tx, initial_profile) {
+    let hook_supervisor = match InputHookSupervisor::start(event_tx, initial_profile, capture_active.clone()) {
         Ok(sup) => {
             tracing::info!("Low-level input hook thread successfully spawned");
             Some(sup)
@@ -62,7 +65,7 @@ fn main() -> Result<(), eframe::Error> {
     let result = eframe::run_native(
         "theasus",
         native_options,
-        Box::new(|cc| Ok(Box::new(KeyboardApp::new(event_rx, device_rx, cc)))),
+        Box::new(move |cc| Ok(Box::new(KeyboardApp::new(event_rx, device_rx, capture_active, cc)))),
     );
 
     // Clean up workers on exit

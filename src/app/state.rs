@@ -22,6 +22,29 @@ pub enum NavView {
     Settings,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CapturedKeyInfo {
+    pub vkey: VKey,
+    pub scan_code: u32,
+    pub raw_vk: u16,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum CaptureState {
+    #[default]
+    Idle,
+    ListeningForTarget,
+    CapturedTarget(CapturedKeyInfo),
+    ListeningForReplacement,
+    CapturedReplacement(CapturedKeyInfo),
+}
+
+impl CaptureState {
+    pub fn is_listening(&self) -> bool {
+        matches!(self, Self::ListeningForTarget | Self::ListeningForReplacement)
+    }
+}
+
 pub struct AppState {
     pub active_view: NavView,
     pub device_manager: DeviceManager,
@@ -31,7 +54,9 @@ pub struct AppState {
     pub active_profile_arc: Arc<RwLock<Profile>>,
     pub pressed_keys: HashSet<VKey>,
     pub selected_key: Option<VKey>,
-    pub capture_mode: bool,
+    pub capture_state: CaptureState,
+    pub capture_active: Arc<AtomicBool>,
+    pub show_manual_picker: bool,
     pub event_log: EventMonitor,
     pub rate_calc: RateCalculator,
     pub rate_stats: RateStats,
@@ -43,7 +68,11 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(event_rx: Receiver<InputEvent>, device_rx: Receiver<String>) -> Self {
+    pub fn new(
+        event_rx: Receiver<InputEvent>,
+        device_rx: Receiver<String>,
+        capture_active: Arc<AtomicBool>,
+    ) -> Self {
         let storage = ProfileStore::new();
         let profiles = storage.load_all();
         let active_profile_id = "default".to_string();
@@ -69,7 +98,9 @@ impl AppState {
             active_profile_arc,
             pressed_keys: HashSet::new(),
             selected_key: Some(VKey::CapsLock),
-            capture_mode: false,
+            capture_state: CaptureState::Idle,
+            capture_active,
+            show_manual_picker: false,
             event_log: EventMonitor::new(1000),
             rate_calc: RateCalculator::new(128),
             rate_stats: RateStats::default(),
@@ -79,6 +110,43 @@ impl AppState {
             device_rx,
             status_message: None,
         }
+    }
+
+    pub fn start_listening_target(&mut self) {
+        self.capture_state = CaptureState::ListeningForTarget;
+        self.capture_active.store(true, Ordering::SeqCst);
+        self.set_status("Listening: Press physical key for target...");
+    }
+
+    pub fn start_listening_replacement(&mut self) {
+        self.capture_state = CaptureState::ListeningForReplacement;
+        self.capture_active.store(true, Ordering::SeqCst);
+        self.set_status("Listening: Press physical key for replacement...");
+    }
+
+    pub fn cancel_capture(&mut self) {
+        self.capture_state = CaptureState::Idle;
+        self.capture_active.store(false, Ordering::SeqCst);
+    }
+
+    pub fn confirm_captured_replacement(&mut self) {
+        if let CaptureState::CapturedReplacement(info) = self.capture_state {
+            if let Some(target) = self.selected_key {
+                self.set_mapping(target, MappingTarget::Key(info.vkey));
+                self.set_status(&format!("Remapped {:?} → {:?}", target, info.vkey));
+            }
+        }
+        self.capture_state = CaptureState::Idle;
+        self.capture_active.store(false, Ordering::SeqCst);
+    }
+
+    pub fn confirm_captured_target(&mut self) {
+        if let CaptureState::CapturedTarget(info) = self.capture_state {
+            self.selected_key = Some(info.vkey);
+            self.set_status(&format!("Target confirmed: {:?}", info.vkey));
+        }
+        self.capture_state = CaptureState::Idle;
+        self.capture_active.store(false, Ordering::SeqCst);
     }
 
     /// Process incoming events from the Raw Input and Low-Level Hook channels.
@@ -99,12 +167,37 @@ impl AppState {
                 break;
             }
 
-            // Capture mode
-            if self.capture_mode && event.state == KeyState::Down && !event.is_injected() {
-                if let Some(sel) = self.selected_key {
-                    self.set_mapping(sel, MappingTarget::Key(event.vkey));
-                    self.capture_mode = false;
-                    self.set_status(&format!("Mapped {:?} → {:?}", sel, event.vkey));
+            // Capture mode state machine
+            if !event.is_injected() && event.state == KeyState::Down {
+                match self.capture_state {
+                    CaptureState::ListeningForTarget => {
+                        let info = CapturedKeyInfo {
+                            vkey: event.vkey,
+                            scan_code: event.scan_code,
+                            raw_vk: event.raw_vk,
+                        };
+                        self.selected_key = Some(event.vkey);
+                        self.capture_state = CaptureState::CapturedTarget(info);
+                        self.capture_active.store(false, Ordering::SeqCst);
+                        self.set_status(&format!(
+                            "Target key captured: {:?} (Scan 0x{:02X})",
+                            event.vkey, event.scan_code
+                        ));
+                    }
+                    CaptureState::ListeningForReplacement => {
+                        let info = CapturedKeyInfo {
+                            vkey: event.vkey,
+                            scan_code: event.scan_code,
+                            raw_vk: event.raw_vk,
+                        };
+                        self.capture_state = CaptureState::CapturedReplacement(info);
+                        self.capture_active.store(false, Ordering::SeqCst);
+                        self.set_status(&format!(
+                            "Replacement key captured: {:?} (Scan 0x{:02X})",
+                            event.vkey, event.scan_code
+                        ));
+                    }
+                    _ => {}
                 }
             }
 

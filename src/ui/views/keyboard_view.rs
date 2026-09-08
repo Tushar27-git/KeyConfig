@@ -1,4 +1,4 @@
-use crate::app::state::AppState;
+use crate::app::state::{AppState, CaptureState};
 use crate::app::theme::Theme;
 use crate::keyboard_visual::KeyboardRenderer;
 use crate::remap::rules::MappingTarget;
@@ -8,12 +8,24 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.vertical(|ui| {
         // Workspace Header
         ui.horizontal(|ui| {
-            ui.heading(RichText::new("Keyboard Workspace").size(18.0).color(Theme::TEXT_PRIMARY));
+            ui.heading(
+                RichText::new("KEYBOARD WORKSPACE")
+                    .size(16.0)
+                    .color(Theme::TEXT_PRIMARY)
+                    .monospace(),
+            );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let profile_name = state.profiles.get(&state.active_profile_id)
+                let profile_name = state
+                    .profiles
+                    .get(&state.active_profile_id)
                     .map(|p| p.name.as_str())
                     .unwrap_or("Default");
-                ui.label(RichText::new(format!("Active Profile: {}", profile_name)).color(Theme::ACCENT_CYAN).monospace());
+                ui.label(
+                    RichText::new(format!("PROFILE: {}", profile_name.to_uppercase()))
+                        .color(Theme::ACCENT_VIOLET)
+                        .monospace()
+                        .small(),
+                );
             });
         });
         ui.add_space(8.0);
@@ -22,8 +34,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.group(|ui| {
             ui.set_width(ui.available_width());
             ui.vertical_centered(|ui| {
-                ui.add_space(8.0);
-                let active_profile = state.profiles.get(&state.active_profile_id)
+                ui.add_space(6.0);
+                let active_profile = state
+                    .profiles
+                    .get(&state.active_profile_id)
                     .cloned()
                     .unwrap_or_else(crate::profiles::model::Profile::new_default);
 
@@ -35,69 +49,197 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                 if let Some(clicked) = renderer.render(ui) {
                     state.selected_key = Some(clicked);
-                    state.capture_mode = false;
+                    state.cancel_capture();
                 }
-                ui.add_space(8.0);
+                ui.add_space(6.0);
             });
         });
 
-        ui.add_space(12.0);
+        ui.add_space(10.0);
 
         // Selected Key Quick-Remap Card
         if let Some(selected_vkey) = state.selected_key {
             ui.group(|ui| {
                 ui.set_width(ui.available_width());
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(format!("Selected Key: {:?}", selected_vkey)).strong().size(15.0));
-                    ui.label(RichText::new(format!("(VK 0x{:02X})", selected_vkey.to_vk())).color(Theme::TEXT_MUTED).monospace());
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new("SELECTED KEY:")
+                                .color(Theme::TEXT_MUTED)
+                                .small()
+                                .monospace(),
+                        );
+                        ui.label(
+                            RichText::new(format!("{:?}", selected_vkey))
+                                .strong()
+                                .monospace()
+                                .color(Theme::ACCENT_BLUE)
+                                .size(14.0),
+                        );
+                        ui.label(
+                            RichText::new(format!("(VK 0x{:02X})", selected_vkey.to_vk()))
+                                .color(Theme::TEXT_MUTED)
+                                .monospace()
+                                .small(),
+                        );
 
-                    let active_profile = state.profiles.get(&state.active_profile_id);
-                    let current_target = active_profile.and_then(|p| p.mappings.get(&selected_vkey));
+                        let active_profile = state.profiles.get(&state.active_profile_id);
+                        let current_target = active_profile.and_then(|p| p.mappings.get(&selected_vkey));
 
-                    ui.separator();
+                        ui.separator();
 
-                    match current_target {
-                        Some(MappingTarget::Key(dest)) => {
-                            ui.label(RichText::new(format!("Mapped to: {:?}", dest)).color(Theme::ACCENT_CYAN).strong());
-                            if ui.button("Reset to Default").clicked() {
-                                state.remove_mapping(selected_vkey);
+                        match current_target {
+                            Some(MappingTarget::Key(dest)) => {
+                                ui.label(
+                                    RichText::new(format!("REMAPPED → {:?}", dest))
+                                        .color(Theme::ACCENT_BLUE)
+                                        .strong()
+                                        .monospace(),
+                                );
+                                if ui.button("↺ Reset").clicked() {
+                                    state.remove_mapping(selected_vkey);
+                                }
+                            }
+                            Some(MappingTarget::Block) => {
+                                ui.label(
+                                    RichText::new("[BLOCKED]")
+                                        .color(Theme::ACCENT_RED)
+                                        .strong()
+                                        .monospace(),
+                                );
+                                if ui.button("↺ Unblock").clicked() {
+                                    state.remove_mapping(selected_vkey);
+                                }
+                            }
+                            None => {
+                                ui.label(
+                                    RichText::new("Assignment: 1:1 Pass-Through")
+                                        .color(Theme::TEXT_SECONDARY)
+                                        .monospace()
+                                        .small(),
+                                );
                             }
                         }
-                        Some(MappingTarget::Block) => {
-                            ui.label(RichText::new("Blocked").color(Theme::ACCENT_RED).strong());
-                            if ui.button("Unblock").clicked() {
-                                state.remove_mapping(selected_vkey);
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            match state.capture_state {
+                                CaptureState::ListeningForTarget => {
+                                    if ui.button("✕ Cancel").clicked() {
+                                        state.cancel_capture();
+                                    }
+                                }
+                                _ => {
+                                    if ui.button("🎯 Capture Target Key").clicked() {
+                                        state.start_listening_target();
+                                    }
+                                }
                             }
+
+                            if ui.button("✕ Block Key").clicked() {
+                                state.set_mapping(selected_vkey, MappingTarget::Block);
+                            }
+                        });
+                    });
+
+                    // Capture State Feedback Area
+                    match state.capture_state {
+                        CaptureState::ListeningForTarget => {
+                            ui.add_space(4.0);
+                            ui.label(
+                                RichText::new("⚡ PRESS ANY PHYSICAL KEY TO SELECT TARGET...")
+                                    .color(Theme::ACCENT_VIOLET)
+                                    .strong()
+                                    .monospace(),
+                            );
                         }
-                        None => {
-                            ui.label(RichText::new("Assignment: Default (1:1 Pass-through)").color(Theme::TEXT_SECONDARY));
+                        CaptureState::ListeningForReplacement => {
+                            ui.add_space(4.0);
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    RichText::new("⚡ PRESS ANY PHYSICAL KEY TO BIND AS REPLACEMENT...")
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong()
+                                        .monospace(),
+                                );
+                                if ui.button("Cancel").clicked() {
+                                    state.cancel_capture();
+                                }
+                            });
+                        }
+                        CaptureState::CapturedReplacement(info) => {
+                            ui.add_space(4.0);
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    RichText::new(format!(
+                                        "✓ CAPTURED: {:?} (Scan 0x{:02X})",
+                                        info.vkey, info.scan_code
+                                    ))
+                                    .color(Theme::ACCENT_GREEN)
+                                    .strong()
+                                    .monospace(),
+                                );
+                                if ui
+                                    .button(
+                                        RichText::new(format!(
+                                            "✓ Apply Remap: {:?} → {:?}",
+                                            selected_vkey, info.vkey
+                                        ))
+                                        .color(Theme::ACCENT_BLUE)
+                                        .strong(),
+                                    )
+                                    .clicked()
+                                {
+                                    state.confirm_captured_replacement();
+                                }
+                                if ui.button("↺ Re-capture").clicked() {
+                                    state.start_listening_replacement();
+                                }
+                                if ui.button("Cancel").clicked() {
+                                    state.cancel_capture();
+                                }
+                            });
+                        }
+                        _ => {
+                            ui.add_space(4.0);
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .button(
+                                        RichText::new("⚡ Capture Physical Replacement Key")
+                                            .color(Theme::ACCENT_BLUE)
+                                            .strong(),
+                                    )
+                                    .clicked()
+                                {
+                                    state.start_listening_replacement();
+                                }
+                                ui.label(
+                                    RichText::new("Click any key on visual keyboard above or capture live.")
+                                        .color(Theme::TEXT_MUTED)
+                                        .small(),
+                                );
+                            });
                         }
                     }
-
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if state.capture_mode {
-                            ui.label(RichText::new("⚡ Press any physical key...").color(Theme::ACCENT_AMBER).strong());
-                            if ui.button("Cancel").clicked() {
-                                state.capture_mode = false;
-                            }
-                        } else if ui.button("Capture Physical Key").clicked() {
-                            state.capture_mode = true;
-                        }
-
-                        if ui.button("Block Key").clicked() {
-                            state.set_mapping(selected_vkey, MappingTarget::Block);
-                        }
-                    });
                 });
             });
         }
 
         ui.add_space(8.0);
 
-        // Live status tip
+        // Hardware Attribution Status
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Auto-Detection Active:").color(Theme::ACCENT_GREEN).small().strong());
-            ui.label(RichText::new("Typing on any keyboard automatically attributes keystrokes to its hardware device handle.").color(Theme::TEXT_SECONDARY).small());
+            ui.label(
+                RichText::new("IDENTIFY-BY-KEYSTROKE:")
+                    .color(Theme::ACCENT_GREEN)
+                    .small()
+                    .monospace()
+                    .strong(),
+            );
+            ui.label(
+                RichText::new("Physical keystrokes are intercepted live with microsecond resolution and zero polling.")
+                    .color(Theme::TEXT_MUTED)
+                    .small(),
+            );
         });
     });
 }

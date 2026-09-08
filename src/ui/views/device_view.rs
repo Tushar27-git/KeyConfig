@@ -127,7 +127,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
         });
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        egui::ScrollArea::vertical()
+            .id_salt("device_detected_keyboards_scroll")
+            .show(ui, |ui| {
             for dev in state.device_manager.detected_keyboards() {
                 let is_active = state.device_manager.active_keyboard().map(|a| a.path == dev.path).unwrap_or(false);
 

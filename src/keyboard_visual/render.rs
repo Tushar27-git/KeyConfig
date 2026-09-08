@@ -42,15 +42,15 @@ impl<'a> KeyboardRenderer<'a> {
 
         let mut clicked_key = None;
 
-        // Background chassis
+        // Background chassis with sharp retro edges
         painter.rect_filled(
             rect.expand(6.0),
-            CornerRadius::same(6),
-            Color32::from_rgb(14, 16, 22),
+            CornerRadius::same(1),
+            Color32::from_rgb(0x0A, 0x0A, 0x0F),
         );
         painter.rect_stroke(
             rect.expand(6.0),
-            CornerRadius::same(6),
+            CornerRadius::same(1),
             Stroke::new(1.0_f32, Theme::BORDER_SUBTLE),
             StrokeKind::Inside,
         );
@@ -108,43 +108,60 @@ impl<'a> KeyboardRenderer<'a> {
         mapping: Option<&MappingTarget>,
         is_hovered: bool,
     ) {
+        // Outer glow simulation when selected or physically pressed
+        if is_selected {
+            painter.rect_stroke(
+                rect.expand(1.5),
+                CornerRadius::same(1),
+                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xA9, 0xFC, 80)),
+                StrokeKind::Outside,
+            );
+        } else if is_pressed {
+            painter.rect_stroke(
+                rect.expand(1.5),
+                CornerRadius::same(1),
+                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xFC, 0xA0, 100)),
+                StrokeKind::Outside,
+            );
+        }
+
         let base_fill = if is_pressed {
-            Color32::from_rgb(245, 158, 11) // Amber glow on physical press
+            Color32::from_rgb(0x1B, 0x48, 0x38) // CRT phosphor active state
         } else if is_selected {
-            Color32::from_rgb(30, 45, 65)
+            Color32::from_rgb(0x18, 0x2A, 0x44) // Electric blue base
         } else if is_hovered {
-            Color32::from_rgb(40, 46, 60)
+            Color32::from_rgb(0x22, 0x22, 0x32)
         } else {
             Theme::BG_KEYCAP
         };
 
         let border_stroke = if is_pressed {
-            Stroke::new(2.0_f32, Color32::WHITE)
+            Stroke::new(1.5_f32, Theme::ACCENT_GREEN)
         } else if is_selected {
-            Stroke::new(2.0_f32, Theme::ACCENT_CYAN)
+            Stroke::new(1.5_f32, Theme::ACCENT_BLUE)
         } else if mapping.is_some() {
-            Stroke::new(1.0_f32, Theme::ACCENT_CYAN)
+            Stroke::new(1.0_f32, Theme::ACCENT_VIOLET)
         } else {
             Stroke::new(1.0_f32, Theme::BORDER_SUBTLE)
         };
 
-        painter.rect_filled(rect, CornerRadius::same(4), base_fill);
-        painter.rect_stroke(rect, CornerRadius::same(4), border_stroke, StrokeKind::Inside);
+        painter.rect_filled(rect, CornerRadius::same(1), base_fill);
+        painter.rect_stroke(rect, CornerRadius::same(1), border_stroke, StrokeKind::Inside);
 
-        let inset = rect.shrink2(Vec2::new(3.0, 3.0));
+        let inset = rect.shrink2(Vec2::new(2.5, 2.5));
         let top_fill = if is_pressed {
-            Color32::from_rgb(217, 119, 6)
+            Color32::from_rgb(0x22, 0x64, 0x4E)
         } else if is_selected {
-            Color32::from_rgb(22, 32, 46)
+            Color32::from_rgb(0x15, 0x24, 0x3A)
         } else {
-            Color32::from_rgb(22, 26, 35)
+            Color32::from_rgb(0x12, 0x12, 0x1B)
         };
-        painter.rect_filled(inset, CornerRadius::same(3), top_fill);
+        painter.rect_filled(inset, CornerRadius::same(1), top_fill);
 
         let text_color = if is_pressed {
             Color32::WHITE
         } else if is_selected {
-            Theme::ACCENT_CYAN
+            Theme::ACCENT_BLUE
         } else {
             Theme::TEXT_PRIMARY
         };
@@ -159,7 +176,7 @@ impl<'a> KeyboardRenderer<'a> {
 
         if let Some(sub) = key.secondary_label {
             painter.text(
-                inset.min + Vec2::new(4.0, 3.0),
+                inset.min + Vec2::new(3.0, 2.0),
                 egui::Align2::LEFT_TOP,
                 sub,
                 egui::FontId::monospace(9.0),
@@ -169,12 +186,12 @@ impl<'a> KeyboardRenderer<'a> {
 
         if let Some(target) = mapping {
             let (badge_text, badge_color) = match target {
-                MappingTarget::Key(dest) => (dest.label(), Theme::ACCENT_CYAN),
+                MappingTarget::Key(dest) => (dest.label(), Theme::ACCENT_VIOLET),
                 MappingTarget::Block => ("✕", Theme::ACCENT_RED),
             };
 
             painter.text(
-                inset.max - Vec2::new(4.0, 3.0),
+                inset.max - Vec2::new(3.0, 2.0),
                 egui::Align2::RIGHT_BOTTOM,
                 badge_text,
                 egui::FontId::monospace(9.0),

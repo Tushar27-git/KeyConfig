@@ -1,11 +1,11 @@
 use crate::input::keys::VKey;
-use crate::input::normalize::{InputEvent, InputOrigin, KeyState};
+use crate::input::normalize::{InputEvent, InputOrigin, KeyState, RemapAction};
 use crate::profiles::model::Profile;
 use crate::remap::RemapEngine;
 use chrono::Local;
 use crossbeam_channel::Sender;
 use parking_lot::RwLock;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
@@ -20,6 +20,7 @@ const LLKHF_INJECTED: u32 = 0x00000001;
 struct HookGlobalState {
     event_tx: Sender<InputEvent>,
     active_profile: Arc<RwLock<Profile>>,
+    capture_active: Arc<AtomicBool>,
     start_instant: Instant,
 }
 
@@ -35,6 +36,7 @@ impl InputHookSupervisor {
     pub fn start(
         event_tx: Sender<InputEvent>,
         active_profile: Arc<RwLock<Profile>>,
+        capture_active: Arc<AtomicBool>,
     ) -> Result<Self, anyhow::Error> {
         let (init_tx, init_rx) = std::sync::mpsc::channel();
 
@@ -48,6 +50,7 @@ impl InputHookSupervisor {
                     HOOK_STATE = Some(HookGlobalState {
                         event_tx,
                         active_profile,
+                        capture_active,
                         start_instant: Instant::now(),
                     });
 
@@ -132,7 +135,12 @@ unsafe extern "system" fn low_level_keyboard_proc(
 
             if let Some(ref state_ctx) = HOOK_STATE {
                 let current_micros = state_ctx.start_instant.elapsed().as_micros() as u64;
-                let (action, intercept) = {
+                let is_capturing = state_ctx.capture_active.load(Ordering::Relaxed);
+
+                let (action, intercept) = if is_capturing && origin == InputOrigin::Physical {
+                    // When capture mode is listening, intercept physical key so OS shortcuts/actions don't fire
+                    (RemapAction::PassThrough, true)
+                } else {
                     let profile_guard = state_ctx.active_profile.read();
                     RemapEngine::process_keystroke(
                         VKey::from_vk(raw_vk),
