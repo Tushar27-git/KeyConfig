@@ -7,6 +7,8 @@ use crate::input::normalize::InputEvent;
 use crate::ui::MainWindow;
 use crossbeam_channel::Receiver;
 
+use crate::profiles::model::Profile;
+use parking_lot::RwLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,12 +23,13 @@ impl KeyboardApp {
         event_rx: Receiver<InputEvent>,
         device_rx: Receiver<String>,
         capture_active: Arc<AtomicBool>,
+        active_profile_arc: Arc<RwLock<Profile>>,
         cc: &eframe::CreationContext<'_>,
     ) -> Self {
         Theme::apply(&cc.egui_ctx);
 
         Self {
-            state: AppState::new(event_rx, device_rx, capture_active),
+            state: AppState::new(event_rx, device_rx, capture_active, active_profile_arc),
             window: MainWindow::new(),
         }
     }

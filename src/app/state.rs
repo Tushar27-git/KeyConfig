@@ -57,6 +57,7 @@ pub struct AppState {
     pub capture_state: CaptureState,
     pub capture_active: Arc<AtomicBool>,
     pub show_manual_picker: bool,
+    pub test_input_text: String,
     pub event_log: EventMonitor,
     pub rate_calc: RateCalculator,
     pub rate_stats: RateStats,
@@ -72,6 +73,7 @@ impl AppState {
         event_rx: Receiver<InputEvent>,
         device_rx: Receiver<String>,
         capture_active: Arc<AtomicBool>,
+        active_profile_arc: Arc<RwLock<Profile>>,
     ) -> Self {
         let storage = ProfileStore::new();
         let profiles = storage.load_all();
@@ -81,7 +83,8 @@ impl AppState {
             .get(&active_profile_id)
             .cloned()
             .unwrap_or_else(Profile::new_default);
-        let active_profile_arc = Arc::new(RwLock::new(initial_profile));
+        // CRITICAL: Synchronize the loaded profile to the shared Arc so the hook thread immediately has it!
+        *active_profile_arc.write() = initial_profile;
 
         let hotplug_trigger = Arc::new(AtomicBool::new(false));
         let stop_flag = Arc::new(AtomicBool::new(false));
@@ -101,6 +104,7 @@ impl AppState {
             capture_state: CaptureState::Idle,
             capture_active,
             show_manual_picker: false,
+            test_input_text: String::new(),
             event_log: EventMonitor::new(1000),
             rate_calc: RateCalculator::new(128),
             rate_stats: RateStats::default(),
@@ -270,6 +274,36 @@ impl AppState {
             *self.active_profile_arc.write() = profile.clone();
             let _ = self.storage.save_profile(profile);
             self.set_status(&format!("Reset mapping for {:?}", source));
+        }
+    }
+
+    pub fn swap_mappings(&mut self, key_a: VKey, key_b: VKey) {
+        if key_a == key_b {
+            return;
+        }
+        if let Some(profile) = self.profiles.get_mut(&self.active_profile_id) {
+            if profile.is_readonly {
+                self.set_status("Cannot edit read-only 'Default' profile. Switch to a custom profile.");
+                return;
+            }
+
+            profile.mappings.insert(key_a, MappingTarget::Key(key_b));
+            profile.mappings.insert(key_b, MappingTarget::Key(key_a));
+            *self.active_profile_arc.write() = profile.clone();
+            let _ = self.storage.save_profile(profile);
+            self.set_status(&format!("✓ Swapped on system: {:?} ↔ {:?}", key_a, key_b));
+        }
+    }
+
+    pub fn save_and_apply_to_system(&mut self) {
+        if let Some(profile) = self.profiles.get(&self.active_profile_id) {
+            *self.active_profile_arc.write() = profile.clone();
+            let _ = self.storage.save_profile(profile);
+            self.set_status(&format!(
+                "✓ APPLIED TO SYSTEM: Profile '{}' active with {} mapping(s)",
+                profile.name,
+                profile.mappings.len()
+            ));
         }
     }
 

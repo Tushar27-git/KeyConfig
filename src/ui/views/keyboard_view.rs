@@ -2,7 +2,7 @@ use crate::app::state::{AppState, CaptureState};
 use crate::app::theme::Theme;
 use crate::keyboard_visual::KeyboardRenderer;
 use crate::remap::rules::MappingTarget;
-use egui::{RichText, Ui};
+use egui::{Color32, RichText, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.vertical(|ui| {
@@ -15,6 +15,17 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .monospace(),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Save & Apply to System Button
+                let save_btn = ui.button(
+                    RichText::new("💾 SAVE & APPLY TO SYSTEM")
+                        .color(Color32::WHITE)
+                        .strong()
+                        .monospace(),
+                );
+                if save_btn.clicked() {
+                    state.save_and_apply_to_system();
+                }
+
                 let profile_name = state
                     .profiles
                     .get(&state.active_profile_id)
@@ -55,7 +66,35 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
         });
 
-        ui.add_space(10.0);
+        ui.add_space(8.0);
+
+        // ==========================================
+        // 🧪 LIVE TEST PAD (Immediate Real-time Verification)
+        // ==========================================
+        ui.group(|ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("🧪 LIVE TEST PAD:")
+                        .monospace()
+                        .strong()
+                        .color(Theme::ACCENT_VIOLET),
+                );
+                let edit_response = ui.add(
+                    egui::TextEdit::singleline(&mut state.test_input_text)
+                        .hint_text("Type here to test your remapped keys live across the system...")
+                        .desired_width(ui.available_width() - 80.0),
+                );
+                if edit_response.has_focus() {
+                    ui.ctx().request_repaint();
+                }
+                if ui.button("Clear").clicked() {
+                    state.test_input_text.clear();
+                }
+            });
+        });
+
+        ui.add_space(8.0);
 
         // Selected Key Quick-Remap Card
         if let Some(selected_vkey) = state.selected_key {
@@ -190,6 +229,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                     .clicked()
                                 {
                                     state.confirm_captured_replacement();
+                                }
+                                if ui
+                                    .button(
+                                        RichText::new(format!(
+                                            "⇄ Swap: {:?} ↔ {:?}",
+                                            selected_vkey, info.vkey
+                                        ))
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong(),
+                                    )
+                                    .clicked()
+                                {
+                                    state.swap_mappings(selected_vkey, info.vkey);
+                                    state.cancel_capture();
                                 }
                                 if ui.button("↺ Re-capture").clicked() {
                                     state.start_listening_replacement();

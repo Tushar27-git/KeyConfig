@@ -6,7 +6,7 @@ use egui::{Color32, CornerRadius, RichText, Stroke, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.vertical(|ui| {
-        // View Title
+        // View Title & Save/Apply Toolbar
         ui.horizontal(|ui| {
             ui.heading(
                 RichText::new("KEY REMAPPING MATRIX")
@@ -14,7 +14,19 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .color(Theme::TEXT_PRIMARY)
                     .monospace(),
             );
+
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Prominent Save & Apply to System Button
+                let save_btn = ui.button(
+                    RichText::new("💾 SAVE & APPLY TO SYSTEM")
+                        .color(Color32::WHITE)
+                        .strong()
+                        .monospace(),
+                );
+                if save_btn.clicked() {
+                    state.save_and_apply_to_system();
+                }
+
                 let active_name = state
                     .profiles
                     .get(&state.active_profile_id)
@@ -30,10 +42,39 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
 
         ui.label(
-            RichText::new("Deterministic physical key interception and software remapping. Injected keys carry tag 0x4B434331.")
+            RichText::new("Hardware-level interception via low-level Windows hook. Intercepts physical keypresses and synthesizes target keys via native SendInput.")
                 .color(Theme::TEXT_MUTED)
                 .small(),
         );
+        ui.add_space(8.0);
+
+        // ==========================================
+        // 🧪 LIVE TEST PAD (Immediate Real-time Verification)
+        // ==========================================
+        ui.group(|ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("🧪 LIVE TEST PAD:")
+                        .monospace()
+                        .strong()
+                        .color(Theme::ACCENT_VIOLET),
+                );
+                let edit_response = ui.add(
+                    egui::TextEdit::singleline(&mut state.test_input_text)
+                        .hint_text("Click here and type to test remapped keys live (e.g. verify '\\' acts as Backspace)...")
+                        .desired_width(ui.available_width() - 80.0),
+                );
+                if edit_response.has_focus() {
+                    // While user is typing in test pad, ensure continuous redraw
+                    ui.ctx().request_repaint();
+                }
+                if ui.button("Clear").clicked() {
+                    state.test_input_text.clear();
+                }
+            });
+        });
+
         ui.add_space(8.0);
 
         let target_key = state.selected_key.unwrap_or(VKey::CapsLock);
@@ -122,7 +163,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
         });
 
-        ui.add_space(10.0);
+        ui.add_space(8.0);
 
         // ==========================================
         // 2. REPLACEMENT ACTION CARD
@@ -234,6 +275,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                         state.confirm_captured_replacement();
                                     }
 
+                                    // Interchanging / Key Swapping Feature!
+                                    let swap_btn = ui.button(
+                                        RichText::new(format!(
+                                            "⇄ SWAP KEYS ({:?} ↔ {:?})",
+                                            target_key, info.vkey
+                                        ))
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong(),
+                                    );
+                                    if swap_btn.clicked() {
+                                        state.swap_mappings(target_key, info.vkey);
+                                        state.cancel_capture();
+                                    }
+
                                     if ui.button("↺ Re-capture").clicked() {
                                         state.start_listening_replacement();
                                     }
@@ -266,7 +321,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
         });
 
-        ui.add_space(10.0);
+        ui.add_space(8.0);
 
         // ==========================================
         // 3. MANUAL FALLBACK KEY PICKER (Collapsed)
@@ -287,7 +342,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.set_width(ui.available_width());
                 egui::ScrollArea::vertical()
                     .id_salt("remap_replacement_key_grid")
-                    .max_height(180.0)
+                    .max_height(160.0)
                     .show(ui, |ui| {
                         ui.label(RichText::new("Common Controls:").small().color(Theme::TEXT_MUTED));
                         ui.horizontal_wrapped(|ui| {
@@ -328,17 +383,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
         }
 
-        ui.add_space(12.0);
+        ui.add_space(10.0);
 
         // ==========================================
         // 4. ACTIVE REMAPPED KEYS TABLE
         // ==========================================
-        ui.heading(
-            RichText::new("ACTIVE REMAPPINGS IN CURRENT PROFILE")
-                .size(14.0)
-                .monospace()
-                .color(Theme::TEXT_PRIMARY),
-        );
+        ui.horizontal(|ui| {
+            ui.heading(
+                RichText::new("ACTIVE REMAPPINGS IN CURRENT PROFILE")
+                    .size(14.0)
+                    .monospace()
+                    .color(Theme::TEXT_PRIMARY),
+            );
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("💾 Apply to System").clicked() {
+                    state.save_and_apply_to_system();
+                }
+            });
+        });
         ui.add_space(4.0);
 
         let mappings_clone = {
@@ -355,7 +418,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("remap_active_mappings_list")
-                .max_height(200.0)
+                .max_height(180.0)
                 .show(ui, |ui| {
                     for (src, target) in mappings_clone {
                         ui.group(|ui| {
