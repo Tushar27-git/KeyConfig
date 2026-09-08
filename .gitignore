@@ -1,6 +1,7 @@
 # Rust build outputs
 /target
 Cargo.lock.bak
+*.exe
 
 # Log files and crash dumps
 *.log

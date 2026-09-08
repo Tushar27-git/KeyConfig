@@ -44,14 +44,14 @@ impl<'a> KeyboardRenderer<'a> {
 
         // Background chassis with sleek rounded borders
         painter.rect_filled(
-            rect.expand(6.0),
-            CornerRadius::same(6),
-            Color32::from_rgb(0x0C, 0x0D, 0x14),
+            rect.expand(8.0),
+            CornerRadius::same(10),
+            Color32::from_rgb(0x0C, 0x0E, 0x18),
         );
         painter.rect_stroke(
-            rect.expand(6.0),
-            CornerRadius::same(6),
-            Stroke::new(1.0_f32, Theme::BORDER_SUBTLE),
+            rect.expand(8.0),
+            CornerRadius::same(10),
+            Stroke::new(1.0_f32, Color32::from_rgb(0x22, 0x27, 0x3E)),
             StrokeKind::Inside,
         );
 
@@ -111,26 +111,26 @@ impl<'a> KeyboardRenderer<'a> {
         // Outer glow simulation when selected or physically pressed
         if is_selected {
             painter.rect_stroke(
-                rect.expand(1.5),
-                CornerRadius::same(3),
-                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xA9, 0xFC, 90)),
+                rect.expand(2.0),
+                CornerRadius::same(6),
+                Stroke::new(1.5_f32, Color32::from_rgba_premultiplied(0x00, 0xD2, 0xFF, 120)),
                 StrokeKind::Outside,
             );
         } else if is_pressed {
             painter.rect_stroke(
-                rect.expand(1.5),
-                CornerRadius::same(3),
-                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xFC, 0xA0, 110)),
+                rect.expand(2.0),
+                CornerRadius::same(6),
+                Stroke::new(1.5_f32, Color32::from_rgba_premultiplied(0x10, 0xB9, 0x81, 140)),
                 StrokeKind::Outside,
             );
         }
 
         let base_fill = if is_pressed {
-            Color32::from_rgb(0x1E, 0x4D, 0x3D) // CRT phosphor active state
+            Color32::from_rgb(0x0F, 0x48, 0x35)
         } else if is_selected {
-            Color32::from_rgb(0x1B, 0x2D, 0x4A) // Electric blue base
+            Color32::from_rgb(0x0A, 0x30, 0x50)
         } else if is_hovered {
-            Color32::from_rgb(0x25, 0x27, 0x3A)
+            Color32::from_rgb(0x28, 0x2E, 0x46)
         } else {
             Theme::BG_KEYCAP
         };
@@ -140,23 +140,25 @@ impl<'a> KeyboardRenderer<'a> {
         } else if is_selected {
             Stroke::new(1.5_f32, Theme::ACCENT_BLUE)
         } else if mapping.is_some() {
-            Stroke::new(1.0_f32, Theme::ACCENT_VIOLET)
+            Stroke::new(1.5_f32, Theme::ACCENT_VIOLET)
         } else {
-            Stroke::new(1.0_f32, Theme::BORDER_SUBTLE)
+            Stroke::new(1.0_f32, Color32::from_rgb(0x28, 0x2E, 0x44))
         };
 
-        painter.rect_filled(rect, CornerRadius::same(3), base_fill);
-        painter.rect_stroke(rect, CornerRadius::same(3), border_stroke, StrokeKind::Inside);
+        painter.rect_filled(rect, CornerRadius::same(5), base_fill);
+        painter.rect_stroke(rect, CornerRadius::same(5), border_stroke, StrokeKind::Inside);
 
         let inset = rect.shrink2(Vec2::new(2.5, 2.5));
         let top_fill = if is_pressed {
-            Color32::from_rgb(0x24, 0x66, 0x50)
+            Color32::from_rgb(0x14, 0x5E, 0x45)
         } else if is_selected {
-            Color32::from_rgb(0x18, 0x28, 0x40)
+            Color32::from_rgb(0x11, 0x44, 0x70)
+        } else if is_hovered {
+            Color32::from_rgb(0x1E, 0x22, 0x36)
         } else {
-            Color32::from_rgb(0x14, 0x15, 0x22)
+            Color32::from_rgb(0x14, 0x16, 0x24)
         };
-        painter.rect_filled(inset, CornerRadius::same(2), top_fill);
+        painter.rect_filled(inset, CornerRadius::same(3), top_fill);
 
         let text_color = if is_pressed {
             Color32::WHITE
@@ -170,16 +172,16 @@ impl<'a> KeyboardRenderer<'a> {
             inset.center(),
             egui::Align2::CENTER_CENTER,
             key.vkey.label(),
-            egui::FontId::monospace(12.0),
+            egui::FontId::proportional(12.5),
             text_color,
         );
 
         if let Some(sub) = key.secondary_label {
             painter.text(
-                inset.min + Vec2::new(3.0, 2.0),
+                inset.min + Vec2::new(4.0, 2.5),
                 egui::Align2::LEFT_TOP,
                 sub,
-                egui::FontId::monospace(9.0),
+                egui::FontId::proportional(9.0),
                 Theme::TEXT_MUTED,
             );
         }
@@ -191,10 +193,10 @@ impl<'a> KeyboardRenderer<'a> {
             };
 
             painter.text(
-                inset.max - Vec2::new(3.0, 2.0),
+                inset.max - Vec2::new(4.0, 2.5),
                 egui::Align2::RIGHT_BOTTOM,
                 badge_text,
-                egui::FontId::monospace(9.0),
+                egui::FontId::proportional(9.5),
                 badge_color,
             );
         }

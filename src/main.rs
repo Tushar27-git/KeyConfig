@@ -9,6 +9,12 @@ use theasus::input::raw_input::RawInputWorker;
 use theasus::profiles::model::Profile;
 
 fn main() -> Result<(), eframe::Error> {
+    // Detach from any parent console immediately so no background CMD window lingers
+    #[cfg(windows)]
+    unsafe {
+        let _ = windows::Win32::System::Console::FreeConsole();
+    }
+
     // Initialize structured logging
     tracing_subscriber::fmt()
         .with_env_filter(

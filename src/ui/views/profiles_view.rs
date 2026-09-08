@@ -17,10 +17,10 @@ impl Default for ProfilesViewState {
 pub fn show(ui: &mut Ui, state: &mut AppState, view_state: &mut ProfilesViewState) {
     ui.vertical(|ui| {
         ui.heading(
-            RichText::new("PROFILE MANAGEMENT")
-                .size(16.0)
+            RichText::new("Profile Management")
+                .size(18.0)
                 .color(Theme::TEXT_PRIMARY)
-                .monospace(),
+                .strong(),
         );
         ui.label(
             RichText::new("Software profiles store custom key remappings with atomic disk persistence.")
@@ -32,7 +32,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, view_state: &mut ProfilesViewStat
         // New Profile Creator
         ui.group(|ui| {
             ui.horizontal(|ui| {
-                ui.label(RichText::new("NEW PROFILE:").monospace().small().color(Theme::TEXT_MUTED));
+                ui.label(RichText::new("New Profile:").small().color(Theme::TEXT_MUTED));
                 ui.text_edit_singleline(&mut view_state.new_profile_name);
                 if ui
                     .button(RichText::new("+ Create Profile").color(Theme::ACCENT_BLUE).strong())
@@ -64,16 +64,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState, view_state: &mut ProfilesViewStat
                                 // Status Indicator
                                 if is_active {
                                     ui.label(
-                                        RichText::new("● ACTIVE")
+                                        RichText::new("● Active")
                                             .color(Theme::ACCENT_GREEN)
-                                            .strong()
-                                            .monospace(),
+                                            .strong(),
                                     );
                                 } else {
                                     ui.label(
-                                        RichText::new("○ INACTIVE")
-                                            .color(Theme::TEXT_MUTED)
-                                            .monospace(),
+                                        RichText::new("○ Inactive")
+                                            .color(Theme::TEXT_MUTED),
                                     );
                                 }
 
@@ -83,8 +81,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, view_state: &mut ProfilesViewStat
                                     ui.label(
                                         RichText::new(&prof.name)
                                             .strong()
-                                            .monospace()
-                                            .size(14.0)
+                                            .size(15.0)
                                             .color(if is_active {
                                                 Theme::ACCENT_BLUE
                                             } else {
@@ -99,8 +96,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, view_state: &mut ProfilesViewStat
                                     ui.label(
                                         RichText::new(format!("Mappings: {} key(s)", prof.mappings.len()))
                                             .color(Theme::TEXT_MUTED)
-                                            .small()
-                                            .monospace(),
+                                            .small(),
                                     );
                                 });
 
@@ -129,8 +125,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, view_state: &mut ProfilesViewStat
                                         ui.label(
                                             RichText::new("[Read-Only Default]")
                                                 .color(Theme::TEXT_MUTED)
-                                                .small()
-                                                .monospace(),
+                                                .small(),
                                         );
                                     }
                                 });

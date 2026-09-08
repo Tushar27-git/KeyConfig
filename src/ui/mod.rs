@@ -2,7 +2,7 @@ pub mod views;
 
 use crate::app::state::{AppState, NavView};
 use crate::app::theme::Theme;
-use egui::{Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Ui, Vec2};
+use egui::{Color32, CornerRadius, Pos2, Rect, RichText, Ui, Vec2};
 use views::ProfilesViewState;
 
 pub struct MainWindow {
@@ -21,29 +21,29 @@ impl MainWindow {
             ctx.request_repaint();
         }
 
-        // Top Hardware Status Bar with Retro Accent Underline
+        // Top Hardware Status Bar with Sleek Studio Header
         egui::TopBottomPanel::top("status_bar")
             .frame(
                 egui::Frame::NONE
                     .fill(Theme::BG_SURFACE)
                     .stroke(egui::Stroke::new(1.0_f32, Theme::BORDER_SUBTLE))
-                    .inner_margin(egui::Margin::symmetric(12, 8)),
+                    .inner_margin(egui::Margin::symmetric(16, 10)),
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     if let Some(active) = state.device_manager.active_keyboard() {
                         ui.label(
-                            RichText::new("● ACTIVE:")
+                            RichText::new("● ONLINE")
                                 .color(Theme::ACCENT_GREEN)
-                                .monospace()
-                                .small(),
+                                .size(11.0)
+                                .strong(),
                         );
                         let label = state.device_manager.active_keyboard_label();
                         ui.label(
                             RichText::new(label)
                                 .color(Theme::TEXT_PRIMARY)
                                 .strong()
-                                .monospace(),
+                                .size(13.0),
                         );
                         ui.label(
                             RichText::new(format!(
@@ -56,33 +56,32 @@ impl MainWindow {
                         );
                     } else if state.device_manager.is_k26_detected() {
                         ui.label(
-                            RichText::new("● DETECTED:")
+                            RichText::new("● DETECTED")
                                 .color(Theme::ACCENT_BLUE)
-                                .monospace()
-                                .small(),
+                                .size(11.0)
+                                .strong(),
                         );
                         ui.label(
                             RichText::new("Cosmic Byte Pandora CBG K26")
+                                .color(Theme::TEXT_PRIMARY)
                                 .strong()
-                                .monospace(),
+                                .size(13.0),
                         );
                         ui.label(
-                            RichText::new("[Press any key to activate]")
+                            RichText::new("• Press any physical key to activate")
                                 .color(Theme::ACCENT_AMBER)
-                                .monospace()
                                 .small(),
                         );
                     } else {
                         ui.label(
-                            RichText::new("○ STANDBY:")
+                            RichText::new("○ STANDBY")
                                 .color(Theme::ACCENT_AMBER)
-                                .monospace()
-                                .small(),
+                                .size(11.0)
+                                .strong(),
                         );
                         ui.label(
-                            RichText::new("Waiting for hardware keystroke...")
+                            RichText::new("Waiting for physical keystroke...")
                                 .color(Theme::TEXT_MUTED)
-                                .monospace()
                                 .small(),
                         );
                     }
@@ -97,14 +96,13 @@ impl MainWindow {
                     ui.label(
                         RichText::new("PROFILE:")
                             .color(Theme::TEXT_MUTED)
-                            .monospace()
                             .small(),
                     );
                     ui.label(
                         RichText::new(active_name.to_uppercase())
                             .color(Theme::ACCENT_VIOLET)
                             .strong()
-                            .monospace(),
+                            .size(12.0),
                     );
 
                     if let Some(msg) = state.current_status() {
@@ -112,80 +110,72 @@ impl MainWindow {
                         ui.label(
                             RichText::new(msg)
                                 .color(Theme::ACCENT_AMBER)
-                                .small()
-                                .monospace(),
+                                .small(),
                         );
                     }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
-                            RichText::new("THEASUS v0.1.0")
+                            RichText::new("THEASUS STUDIO v0.1.0")
                                 .color(Theme::TEXT_MUTED)
-                                .small()
-                                .monospace(),
+                                .small(),
                         );
                     });
                 });
-
-                // Accent colored underline strip
-                ui.add_space(4.0);
-                let (strip_rect, _) = ui.allocate_exact_size(
-                    Vec2::new(ui.available_width(), 1.5),
-                    egui::Sense::hover(),
-                );
-                ui.painter().rect_filled(
-                    strip_rect,
-                    CornerRadius::same(0),
-                    Color32::from_rgb(0x3D, 0xA9, 0xFC),
-                );
             });
 
         // Left Navigation Sidebar
         egui::SidePanel::left("nav_sidebar")
             .resizable(false)
-            .exact_width(175.0)
+            .exact_width(185.0)
             .frame(
                 egui::Frame::NONE
                     .fill(Theme::BG_SURFACE)
                     .stroke(egui::Stroke::new(1.0_f32, Theme::BORDER_SUBTLE))
-                    .inner_margin(8.0),
+                    .inner_margin(12.0),
             )
             .show(ctx, |ui| {
                 ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new("THEASUS")
+                            .color(Theme::TEXT_PRIMARY)
+                            .size(17.0)
+                            .strong(),
+                    );
+                    ui.label(
+                        RichText::new("STUDIO")
+                            .color(Theme::ACCENT_BLUE)
+                            .size(11.0)
+                            .strong(),
+                    );
+                });
                 ui.label(
-                    RichText::new("⚡ THEASUS")
-                        .color(Theme::ACCENT_AMBER)
-                        .strong()
-                        .monospace(),
-                );
-                ui.label(
-                    RichText::new("HARDWARE CONTROLLER")
+                    RichText::new("KEYBOARD CONTROL CENTER")
                         .color(Theme::TEXT_MUTED)
-                        .size(9.0)
-                        .monospace(),
+                        .size(9.0),
                 );
-                ui.add_space(12.0);
+                ui.add_space(14.0);
 
-                self.nav_button(ui, state, NavView::Keyboard, "⌨  KEYBOARD");
-                self.nav_button(ui, state, NavView::Profiles, "📁 PROFILES");
-                self.nav_button(ui, state, NavView::Remap, "🔀 REMAP");
-                self.nav_button(ui, state, NavView::Diagnostics, "📊 DIAGNOSTICS");
-                self.nav_button(ui, state, NavView::Device, "🔌 DEVICE");
-                self.nav_button(ui, state, NavView::Settings, "⚙  SETTINGS");
+                self.nav_button(ui, state, NavView::Keyboard, "⌨  Keyboard");
+                self.nav_button(ui, state, NavView::Remap, "🔀  Remap Engine");
+                self.nav_button(ui, state, NavView::Profiles, "📁  Profiles");
+                self.nav_button(ui, state, NavView::Diagnostics, "📊  Diagnostics");
+                self.nav_button(ui, state, NavView::Device, "🔌  Device Info");
+                self.nav_button(ui, state, NavView::Settings, "⚙  Settings");
 
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.label(
-                        RichText::new("PRECISION TERMINAL")
-                            .color(Theme::TEXT_MUTED)
-                            .small()
-                            .monospace(),
+                        RichText::new("● Native Win32 Hook Active")
+                            .color(Theme::ACCENT_GREEN)
+                            .size(9.5),
                     );
                 });
             });
 
         // Main Central Workspace
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE.fill(Theme::BG_BASE).inner_margin(16.0))
+            .frame(egui::Frame::NONE.fill(Theme::BG_BASE).inner_margin(18.0))
             .show(ctx, |ui| {
                 match state.active_view {
                     NavView::Keyboard => views::keyboard_view::show(ui, state),
@@ -202,7 +192,7 @@ impl MainWindow {
 
     fn nav_button(&self, ui: &mut Ui, state: &mut AppState, view: NavView, label: &str) {
         let is_active = state.active_view == view;
-        let button_size = Vec2::new(ui.available_width(), 34.0);
+        let button_size = Vec2::new(ui.available_width(), 36.0);
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
 
         if response.clicked() {
@@ -211,34 +201,29 @@ impl MainWindow {
 
         let painter = ui.painter_at(rect);
 
-        // Hover or Active background
+        // Hover or Active background with smooth modern 6px rounded pill
         if is_active {
             painter.rect_filled(
                 rect,
-                CornerRadius::same(1),
-                Color32::from_rgb(0x18, 0x22, 0x36),
+                CornerRadius::same(6),
+                Color32::from_rgb(0x1C, 0x22, 0x36),
             );
 
-            // 2px solid electric blue glowing left-edge indicator bar
-            let indicator_rect = Rect::from_min_size(rect.min, Vec2::new(3.0, rect.height()));
+            // Sleek electric cyan left indicator bar
+            let indicator_rect = Rect::from_min_size(
+                Pos2::new(rect.min.x + 3.0, rect.min.y + 6.0),
+                Vec2::new(3.5, rect.height() - 12.0),
+            );
             painter.rect_filled(
                 indicator_rect,
-                CornerRadius::same(1),
+                CornerRadius::same(2),
                 Theme::ACCENT_BLUE,
-            );
-
-            // Subtle glow outside indicator
-            painter.rect_stroke(
-                indicator_rect.expand(1.0),
-                CornerRadius::same(1),
-                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xA9, 0xFC, 80)),
-                egui::StrokeKind::Outside,
             );
         } else if response.hovered() {
             painter.rect_filled(
                 rect,
-                CornerRadius::same(1),
-                Color32::from_rgb(0x18, 0x18, 0x24),
+                CornerRadius::same(6),
+                Color32::from_rgb(0x18, 0x1C, 0x2C),
             );
         }
 
@@ -251,13 +236,13 @@ impl MainWindow {
         };
 
         painter.text(
-            Pos2::new(rect.min.x + 12.0, rect.center().y),
+            Pos2::new(rect.min.x + 14.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
             label,
-            egui::FontId::monospace(11.5),
+            egui::FontId::proportional(13.0),
             text_color,
         );
 
-        ui.add_space(2.0);
+        ui.add_space(3.0);
     }
 }

@@ -9,19 +9,19 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         // View Title & Save/Apply Toolbar
         ui.horizontal(|ui| {
             ui.heading(
-                RichText::new("KEY REMAPPING MATRIX")
-                    .size(16.0)
+                RichText::new("Remap Rules Matrix")
+                    .size(18.0)
                     .color(Theme::TEXT_PRIMARY)
-                    .monospace(),
+                    .strong(),
             );
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 // Prominent Save & Apply to System Button
                 let save_btn = ui.button(
-                    RichText::new("💾 SAVE & APPLY TO SYSTEM")
+                    RichText::new("💾 Save & Apply to System")
                         .color(Color32::WHITE)
                         .strong()
-                        .monospace(),
+                        .size(12.5),
                 );
                 if save_btn.clicked() {
                     state.save_and_apply_to_system();
@@ -35,8 +35,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(
                     RichText::new(format!("PROFILE: {}", active_name.to_uppercase()))
                         .color(Theme::ACCENT_VIOLET)
-                        .monospace()
-                        .small(),
+                        .strong()
+                        .size(11.0),
                 );
             });
         });
@@ -56,9 +56,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new("🧪 LIVE TEST PAD:")
-                        .monospace()
                         .strong()
-                        .color(Theme::ACCENT_VIOLET),
+                        .color(Theme::ACCENT_CYAN),
                 );
                 let edit_response = ui.add(
                     egui::TextEdit::singleline(&mut state.test_input_text)
@@ -88,14 +87,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     ui.label(
                         RichText::new("TARGET PHYSICAL KEY:")
                             .color(Theme::TEXT_MUTED)
-                            .small()
-                            .monospace(),
+                            .size(11.0),
                     );
                     ui.label(
                         RichText::new(format!("{:?} ({})", target_key, target_key.label()))
                             .color(Theme::ACCENT_BLUE)
                             .strong()
-                            .monospace()
                             .size(15.0),
                     );
                     ui.label(
@@ -112,10 +109,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     match current_target {
                         Some(MappingTarget::Key(dest)) => {
                             ui.label(
-                                RichText::new(format!("REMAPPED → {:?}", dest))
+                                RichText::new(format!("Remapped → {:?}", dest))
                                     .color(Theme::ACCENT_BLUE)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             );
                             if ui.button("↺ Reset").clicked() {
                                 state.remove_mapping(target_key);
@@ -125,8 +121,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.label(
                                 RichText::new("[KEY BLOCKED]")
                                     .color(Theme::ACCENT_RED)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             );
                             if ui.button("↺ Unblock").clicked() {
                                 state.remove_mapping(target_key);
@@ -136,7 +131,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.label(
                                 RichText::new("1:1 Pass-Through (Default)")
                                     .color(Theme::TEXT_SECONDARY)
-                                    .monospace()
                                     .small(),
                             );
                         }
@@ -209,8 +203,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(
                     RichText::new("ASSIGN DESIRED OUTPUT KEY (1-Click Presets):")
                         .color(Theme::TEXT_MUTED)
-                        .small()
-                        .monospace(),
+                        .size(11.0),
                 );
                 ui.horizontal_wrapped(|ui| {
                     let quick_keys = [
@@ -250,11 +243,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.button(
                                 RichText::new(label)
                                     .color(Theme::ACCENT_BLUE)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             )
                         } else {
-                            ui.button(RichText::new(label).monospace())
+                            ui.button(RichText::new(label))
                         };
 
                         if btn.clicked() {
@@ -272,17 +264,15 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     ui.label(
                         RichText::new("INTERCHANGE / SWAP:")
                             .color(Theme::TEXT_MUTED)
-                            .small()
-                            .monospace(),
+                            .size(11.0),
                     );
 
                     if target_key == VKey::Backslash {
                         if ui
                             .button(
-                                RichText::new("⇄ SWAP: \\ ↔ Backspace")
+                                RichText::new("⇄ Swap: \\ ↔ Backspace")
                                     .color(Theme::ACCENT_VIOLET)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             )
                             .clicked()
                         {
@@ -291,10 +281,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else if target_key == VKey::Backspace {
                         if ui
                             .button(
-                                RichText::new("⇄ SWAP: Backspace ↔ \\")
+                                RichText::new("⇄ Swap: Backspace ↔ \\")
                                     .color(Theme::ACCENT_VIOLET)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             )
                             .clicked()
                         {
@@ -303,10 +292,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else if target_key == VKey::CapsLock {
                         if ui
                             .button(
-                                RichText::new("⇄ SWAP: CapsLock ↔ Ctrl")
+                                RichText::new("⇄ Swap: CapsLock ↔ Ctrl")
                                     .color(Theme::ACCENT_VIOLET)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             )
                             .clicked()
                         {
@@ -314,10 +302,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         }
                         if ui
                             .button(
-                                RichText::new("⇄ SWAP: CapsLock ↔ Esc")
+                                RichText::new("⇄ Swap: CapsLock ↔ Esc")
                                     .color(Theme::ACCENT_VIOLET)
-                                    .strong()
-                                    .monospace(),
+                                    .strong(),
                             )
                             .clicked()
                         {
@@ -341,8 +328,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     if ui
                         .button(
                             RichText::new(format!("⇄ Swap with {:?}", swap_target))
-                                .color(Theme::ACCENT_VIOLET)
-                                .monospace(),
+                                .color(Theme::ACCENT_VIOLET),
                         )
                         .clicked()
                     {
@@ -367,16 +353,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.vertical(|ui| {
                                 ui.horizontal(|ui| {
                                     ui.label(
-                                        RichText::new("✓ CAPTURED REPLACEMENT KEY:")
+                                        RichText::new("✓ Captured Replacement Key:")
                                             .color(Theme::ACCENT_GREEN)
-                                            .strong()
-                                            .monospace(),
+                                            .strong(),
                                     );
                                     ui.label(
                                         RichText::new(format!("{:?}", info.vkey))
                                             .color(Theme::ACCENT_BLUE)
                                             .strong()
-                                            .monospace()
                                             .size(15.0),
                                     );
                                     ui.label(
@@ -394,7 +378,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 ui.horizontal(|ui| {
                                     let apply_btn = ui.button(
                                         RichText::new(format!(
-                                            "✓ APPLY REMAP: {:?} → {:?}",
+                                            "✓ Apply Remap: {:?} → {:?}",
                                             target_key, info.vkey
                                         ))
                                         .color(Theme::ACCENT_BLUE)
@@ -406,7 +390,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                                     let swap_btn = ui.button(
                                         RichText::new(format!(
-                                            "⇄ SWAP KEYS ({:?} ↔ {:?})",
+                                            "⇄ Swap Keys ({:?} ↔ {:?})",
                                             target_key, info.vkey
                                         ))
                                         .color(Theme::ACCENT_VIOLET)
@@ -461,7 +445,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     RichText::new("ADD NEW REMAPPING RULE TO MATRIX:")
                         .color(Theme::TEXT_PRIMARY)
                         .strong()
-                        .monospace()
                         .size(13.0),
                 );
                 ui.add_space(4.0);
@@ -529,11 +512,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal(|ui| {
             ui.heading(
                 RichText::new(format!(
-                    "ACTIVE REMAPPINGS IN CURRENT PROFILE ({})",
+                    "Active Remappings in Current Profile ({})",
                     mappings_clone.len()
                 ))
-                .size(14.0)
-                .monospace()
+                .size(15.0)
+                .strong()
                 .color(Theme::TEXT_PRIMARY),
             );
 
@@ -571,8 +554,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.horizontal(|ui| {
                                 ui.label(
                                     RichText::new(format!("{:?} ({})", src, src.label()))
-                                        .strong()
-                                        .monospace(),
+                                        .strong(),
                                 );
                                 ui.label(RichText::new("→").color(Theme::TEXT_MUTED).strong());
 
@@ -581,8 +563,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                         ui.label(
                                             RichText::new(format!("{:?} ({})", dest, dest.label()))
                                                 .color(Theme::ACCENT_BLUE)
-                                                .strong()
-                                                .monospace(),
+                                                .strong(),
                                         );
 
                                         // 1-Click Swap Button for each active mapping
@@ -601,8 +582,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                         ui.label(
                                             RichText::new("[BLOCKED]")
                                                 .color(Theme::ACCENT_RED)
-                                                .strong()
-                                                .monospace(),
+                                                .strong(),
                                         );
                                     }
                                 }
@@ -621,30 +601,30 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     });
 }
 
-/// Renders a pulsing retro terminal capture box
+/// Renders a pulsing modern capture box
 fn render_listening_box(ui: &mut Ui, message: &str) {
     let time = ui.input(|i| i.time);
     let pulse = ((time * 4.0).sin() * 0.5 + 0.5) as f32;
     let border_color = Color32::from_rgb(
-        (163.0 * (0.6 + 0.4 * pulse)) as u8,
-        (116.0 * (0.6 + 0.4 * pulse)) as u8,
-        (255.0 * (0.6 + 0.4 * pulse)) as u8,
+        (139.0 * (0.6 + 0.4 * pulse)) as u8,
+        (92.0 * (0.6 + 0.4 * pulse)) as u8,
+        (246.0 * (0.6 + 0.4 * pulse)) as u8,
     );
 
     let (rect, _response) = ui.allocate_exact_size(
-        egui::Vec2::new(ui.available_width(), 44.0),
+        egui::Vec2::new(ui.available_width(), 46.0),
         egui::Sense::hover(),
     );
     let painter = ui.painter_at(rect);
 
     painter.rect_filled(
         rect,
-        CornerRadius::same(1),
-        Color32::from_rgba_premultiplied(0x18, 0x14, 0x28, 200),
+        CornerRadius::same(8),
+        Color32::from_rgba_premultiplied(0x18, 0x16, 0x2C, 220),
     );
     painter.rect_stroke(
         rect,
-        CornerRadius::same(1),
+        CornerRadius::same(8),
         Stroke::new(1.5_f32, border_color),
         egui::StrokeKind::Inside,
     );
@@ -653,10 +633,10 @@ fn render_listening_box(ui: &mut Ui, message: &str) {
         rect.center(),
         egui::Align2::CENTER_CENTER,
         format!("⚡ {}", message),
-        egui::FontId::monospace(13.0),
+        egui::FontId::proportional(13.5),
         Color32::from_rgb(
-            (228.0 + 27.0 * pulse) as u8,
-            (228.0 + 27.0 * pulse) as u8,
+            (230.0 + 25.0 * pulse) as u8,
+            (230.0 + 25.0 * pulse) as u8,
             255,
         ),
     );
