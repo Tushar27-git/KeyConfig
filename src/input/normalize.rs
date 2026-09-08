@@ -40,4 +40,8 @@ impl InputEvent {
     pub fn is_injected(&self) -> bool {
         self.origin == InputOrigin::Injected
     }
+
+    pub fn is_self_injected(&self) -> bool {
+        self.action == RemapAction::SelfInjected
+    }
 }

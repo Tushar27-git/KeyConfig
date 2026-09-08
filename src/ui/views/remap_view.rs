@@ -376,15 +376,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                                 ui.add_space(6.0);
                                 ui.horizontal(|ui| {
-                                    let apply_btn = ui.button(
-                                        RichText::new(format!(
-                                            "✓ Apply Remap: {:?} → {:?}",
-                                            target_key, info.vkey
-                                        ))
-                                        .color(Theme::ACCENT_BLUE)
-                                        .strong(),
+                                    let done_btn = ui.button(
+                                        RichText::new("✓ Done (Active Now)")
+                                            .color(Theme::ACCENT_GREEN)
+                                            .strong(),
                                     );
-                                    if apply_btn.clicked() {
+                                    if done_btn.clicked() {
                                         state.confirm_captured_replacement();
                                     }
 

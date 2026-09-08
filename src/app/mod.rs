@@ -38,11 +38,14 @@ impl KeyboardApp {
 impl eframe::App for KeyboardApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Drain incoming events from Raw Input and Low-Level Hook threads
-        self.state.process_incoming_events();
+        let had_activity = self.state.process_incoming_events();
 
-        // If capturing or keys are pressed, request immediate redraw for microsecond responsiveness
-        if self.state.capture_state.is_listening() || !self.state.pressed_keys.is_empty() {
-            ctx.request_repaint_after(Duration::from_millis(8));
+        // If activity arrived, capturing, or keys are pressed, request immediate redraw for instant responsiveness
+        if had_activity || self.state.capture_state.is_listening() || !self.state.pressed_keys.is_empty() {
+            ctx.request_repaint();
+        } else {
+            // Keep background timer alive at smooth 30-60 FPS without high CPU usage
+            ctx.request_repaint_after(Duration::from_millis(33));
         }
 
         // Render UI

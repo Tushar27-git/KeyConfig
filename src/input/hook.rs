@@ -8,11 +8,12 @@ use parking_lot::RwLock;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, DispatchMessageW, GetMessageW, PostThreadMessageW, SetWindowsHookExW,
-    TranslateMessage, UnhookWindowsHookEx, HHOOK, KBDLLHOOKSTRUCT, MSG, WH_KEYBOARD_LL, WM_KEYDOWN,
-    WM_KEYUP, WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
+    CallNextHookEx, DispatchMessageW, GetMessageW, PeekMessageW, PostThreadMessageW, SetWindowsHookExW,
+    TranslateMessage, UnhookWindowsHookEx, HHOOK, KBDLLHOOKSTRUCT, MSG, PM_NOREMOVE, WH_KEYBOARD_LL,
+    WM_KEYDOWN, WM_KEYUP, WM_QUIT, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
 const LLKHF_INJECTED: u32 = 0x00000010;
@@ -25,7 +26,7 @@ struct HookGlobalState {
 }
 
 static mut HOOK_STATE: Option<HookGlobalState> = None;
-static HOOK_HANDLE: AtomicU32 = AtomicU32::new(0);
+static HOOK_HANDLE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 static HOOK_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 
 pub struct InputHookSupervisor {
@@ -54,16 +55,25 @@ impl InputHookSupervisor {
                         start_instant: Instant::now(),
                     });
 
+                    // 1. Force the creation of the Win32 message queue for this worker thread
+                    let mut dummy_msg = MSG::default();
+                    let _ = PeekMessageW(&mut dummy_msg, None, 0, 0, PM_NOREMOVE);
+
+                    // 2. Retrieve the module handle for the current executable/DLL
+                    let hinstance = GetModuleHandleW(None)
+                        .ok()
+                        .map(|h| HINSTANCE(h.0));
+
                     let hook = SetWindowsHookExW(
                         WH_KEYBOARD_LL,
                         Some(low_level_keyboard_proc),
-                        None,
+                        hinstance,
                         0,
                     );
 
                     match hook {
                         Ok(hhook) => {
-                            HOOK_HANDLE.store(hhook.0 as usize as u32, Ordering::SeqCst);
+                            HOOK_HANDLE.store(hhook.0 as usize, Ordering::SeqCst);
                             let _ = init_tx.send(Ok(()));
 
                             let mut msg = MSG::default();
@@ -132,13 +142,16 @@ unsafe extern "system" fn low_level_keyboard_proc(
                 InputOrigin::Physical
             };
             let extra_info = kbd.dwExtraInfo;
+            let is_self_injected = extra_info == crate::input::injector::KCC_MAGIC_EXTRA_INFO;
 
             if let Some(ref state_ctx) = HOOK_STATE {
                 let current_micros = state_ctx.start_instant.elapsed().as_micros() as u64;
                 let is_capturing = state_ctx.capture_active.load(Ordering::Relaxed);
 
-                let (action, intercept) = if is_capturing && origin == InputOrigin::Physical {
-                    // When capture mode is listening, intercept physical key so OS shortcuts/actions don't fire
+                let (action, intercept) = if is_self_injected {
+                    (RemapAction::SelfInjected, false)
+                } else if is_capturing {
+                    // When capture mode is listening, intercept key so OS shortcuts/actions don't fire
                     (RemapAction::PassThrough, true)
                 } else {
                     let profile_guard = state_ctx.active_profile.read();

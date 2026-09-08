@@ -160,9 +160,13 @@ impl AppState {
     }
 
     /// Process incoming events from the Raw Input and Low-Level Hook channels.
-    pub fn process_incoming_events(&mut self) {
+    /// Returns true if any new input or device activity occurred.
+    pub fn process_incoming_events(&mut self) -> bool {
+        let mut had_activity = false;
+
         // 1. Process Raw Input device path events (identify-by-keystroke)
         while let Ok(path) = self.device_rx.try_recv() {
+            had_activity = true;
             if self.device_manager.on_keystroke_path(&path) {
                 let label = self.device_manager.active_keyboard_label();
                 self.set_status(&format!("Active keyboard identified: {}", label));
@@ -172,13 +176,14 @@ impl AppState {
         // 2. Process keystroke events from the hook
         let mut count = 0;
         while let Ok(event) = self.event_rx.try_recv() {
+            had_activity = true;
             count += 1;
             if count > 256 {
                 break;
             }
 
             // Capture mode state machine
-            if !event.is_injected() && event.state == KeyState::Down {
+            if !event.is_self_injected() && event.state == KeyState::Down {
                 match self.capture_state {
                     CaptureState::ListeningForTarget => {
                         let info = CapturedKeyInfo {
@@ -200,19 +205,23 @@ impl AppState {
                             scan_code: event.scan_code,
                             raw_vk: event.raw_vk,
                         };
+                        // Immediately apply remapping as soon as the physical key is pressed!
+                        if let Some(target) = self.selected_key {
+                            self.set_mapping(target, MappingTarget::Key(event.vkey));
+                            self.set_status(&format!(
+                                "✓ Remapped {:?} → {:?} (Scan 0x{:02X})",
+                                target, event.vkey, event.scan_code
+                            ));
+                        }
                         self.capture_state = CaptureState::CapturedReplacement(info);
                         self.capture_active.store(false, Ordering::SeqCst);
-                        self.set_status(&format!(
-                            "Replacement key captured: {:?} (Scan 0x{:02X})",
-                            event.vkey, event.scan_code
-                        ));
                     }
                     _ => {}
                 }
             }
 
             // Update visual keyboard pressed state
-            if !event.is_injected() {
+            if !event.is_self_injected() {
                 match event.state {
                     KeyState::Down => {
                         self.pressed_keys.insert(event.vkey);
@@ -235,6 +244,7 @@ impl AppState {
 
         // 3. Process hotplug trigger (WM_INPUT_DEVICE_CHANGE or background poll)
         if self.hotplug_trigger.swap(false, Ordering::SeqCst) {
+            had_activity = true;
             let diffs = self.device_manager.refresh();
             for diff in diffs {
                 match diff {
@@ -248,6 +258,8 @@ impl AppState {
                 }
             }
         }
+
+        had_activity
     }
 
     pub fn set_active_profile(&mut self, id: &str) {

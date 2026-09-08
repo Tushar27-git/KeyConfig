@@ -341,8 +341,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.horizontal(|ui| {
                                 ui.label(
                                     RichText::new(format!(
-                                        "✓ CAPTURED: {:?} (Scan 0x{:02X})",
-                                        info.vkey, info.scan_code
+                                        "✓ BOUND & ACTIVE: {:?} → {:?} (Scan 0x{:02X})",
+                                        selected_vkey, info.vkey, info.scan_code
                                     ))
                                     .color(Theme::ACCENT_GREEN)
                                     .strong()
@@ -350,12 +350,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 );
                                 if ui
                                     .button(
-                                        RichText::new(format!(
-                                            "✓ Apply Remap: {:?} → {:?}",
-                                            selected_vkey, info.vkey
-                                        ))
-                                        .color(Theme::ACCENT_BLUE)
-                                        .strong(),
+                                        RichText::new("✓ Done")
+                                            .color(Theme::ACCENT_BLUE)
+                                            .strong(),
                                     )
                                     .clicked()
                                 {
@@ -377,9 +374,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 }
                                 if ui.button("↺ Re-capture").clicked() {
                                     state.start_listening_replacement();
-                                }
-                                if ui.button("Cancel").clicked() {
-                                    state.cancel_capture();
                                 }
                             });
                         }
