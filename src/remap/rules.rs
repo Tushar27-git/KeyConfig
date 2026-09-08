@@ -12,3 +12,19 @@ pub enum MappingTarget {
     Key(VKey),
     Block,
 }
+
+impl MappingTarget {
+    pub fn label(&self) -> &'static str {
+        match self {
+            MappingTarget::Key(k) => k.label(),
+            MappingTarget::Block => "✕",
+        }
+    }
+
+    pub fn display_target(&self) -> String {
+        match self {
+            MappingTarget::Key(k) => format!("Remapped → {:?}", k),
+            MappingTarget::Block => "[BLOCKED]".to_string(),
+        }
+    }
+}

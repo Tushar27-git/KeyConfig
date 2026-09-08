@@ -1,5 +1,6 @@
 use crate::app::state::{AppState, CaptureState};
 use crate::app::theme::Theme;
+use crate::input::keys::VKey;
 use crate::keyboard_visual::KeyboardRenderer;
 use crate::remap::rules::MappingTarget;
 use egui::{Color32, RichText, Ui};
@@ -180,6 +181,150 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         });
                     });
 
+                    ui.add_space(6.0);
+
+                    // Quick Assign Desired Key (1-Click Remapping)
+                    ui.label(
+                        RichText::new("QUICK ASSIGN DESIRED KEY:")
+                            .color(Theme::TEXT_MUTED)
+                            .small()
+                            .monospace(),
+                    );
+                    ui.horizontal_wrapped(|ui| {
+                        let quick_keys = [
+                            (VKey::Backspace, "⌫ Backspace"),
+                            (VKey::Enter, "↵ Enter"),
+                            (VKey::Escape, "⎋ Esc"),
+                            (VKey::Delete, "⌦ Del"),
+                            (VKey::Tab, "⇥ Tab"),
+                            (VKey::Space, "Space"),
+                            (VKey::CapsLock, "Caps"),
+                            (VKey::ControlLeft, "Ctrl (L)"),
+                            (VKey::AltLeft, "Alt (L)"),
+                            (VKey::ShiftLeft, "Shift (L)"),
+                            (VKey::WinLeft, "⊞ Win"),
+                            (VKey::ArrowUp, "▲ Up"),
+                            (VKey::ArrowDown, "▼ Down"),
+                            (VKey::ArrowLeft, "◀ Left"),
+                            (VKey::ArrowRight, "▶ Right"),
+                        ];
+
+                        let current_mapping = state
+                            .profiles
+                            .get(&state.active_profile_id)
+                            .and_then(|p| p.mappings.get(&selected_vkey))
+                            .cloned();
+
+                        for (vkey, label) in quick_keys {
+                            let is_current = match &current_mapping {
+                                Some(MappingTarget::Key(dest)) => *dest == vkey,
+                                _ => false,
+                            };
+
+                            let btn = if is_current {
+                                ui.button(
+                                    RichText::new(label)
+                                        .color(Theme::ACCENT_BLUE)
+                                        .strong()
+                                        .monospace(),
+                                )
+                            } else {
+                                ui.button(RichText::new(label).monospace())
+                            };
+
+                            if btn.clicked() {
+                                state.set_mapping(selected_vkey, MappingTarget::Key(vkey));
+                            }
+                        }
+                    });
+
+                    ui.add_space(6.0);
+
+                    // Smart Contextual Interchange / Swap Keys
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new("INTERCHANGE / SWAP:")
+                                .color(Theme::TEXT_MUTED)
+                                .small()
+                                .monospace(),
+                        );
+
+                        if selected_vkey == VKey::Backslash {
+                            if ui
+                                .button(
+                                    RichText::new("⇄ SWAP: \\ ↔ Backspace")
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong()
+                                        .monospace(),
+                                )
+                                .clicked()
+                            {
+                                state.swap_mappings(VKey::Backslash, VKey::Backspace);
+                            }
+                        } else if selected_vkey == VKey::Backspace {
+                            if ui
+                                .button(
+                                    RichText::new("⇄ SWAP: Backspace ↔ \\")
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong()
+                                        .monospace(),
+                                )
+                                .clicked()
+                            {
+                                state.swap_mappings(VKey::Backspace, VKey::Backslash);
+                            }
+                        } else if selected_vkey == VKey::CapsLock {
+                            if ui
+                                .button(
+                                    RichText::new("⇄ SWAP: CapsLock ↔ Ctrl")
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong()
+                                        .monospace(),
+                                )
+                                .clicked()
+                            {
+                                state.swap_mappings(VKey::CapsLock, VKey::ControlLeft);
+                            }
+                            if ui
+                                .button(
+                                    RichText::new("⇄ SWAP: CapsLock ↔ Esc")
+                                        .color(Theme::ACCENT_VIOLET)
+                                        .strong()
+                                        .monospace(),
+                                )
+                                .clicked()
+                            {
+                                state.swap_mappings(VKey::CapsLock, VKey::Escape);
+                            }
+                        }
+
+                        // Arbitrary Swap Target
+                        let swap_target = state.swap_target_key.unwrap_or(VKey::Backspace);
+                        egui::ComboBox::from_id_salt("kb_swap_target_combo")
+                            .selected_text(swap_target.name())
+                            .width(130.0)
+                            .show_ui(ui, |ui| {
+                                for &k in VKey::all_assignable() {
+                                    if k != selected_vkey {
+                                        ui.selectable_value(&mut state.swap_target_key, Some(k), k.name());
+                                    }
+                                }
+                            });
+
+                        if ui
+                            .button(
+                                RichText::new(format!("⇄ Swap with {:?}", swap_target))
+                                    .color(Theme::ACCENT_VIOLET)
+                                    .monospace(),
+                            )
+                            .clicked()
+                        {
+                            state.swap_mappings(selected_vkey, swap_target);
+                        }
+                    });
+
+                    ui.add_space(6.0);
+
                     // Capture State Feedback Area
                     match state.capture_state {
                         CaptureState::ListeningForTarget => {
@@ -266,7 +411,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                     state.start_listening_replacement();
                                 }
                                 ui.label(
-                                    RichText::new("Click any key on visual keyboard above or capture live.")
+                                    RichText::new("Press physical key or use 1-click presets above.")
                                         .color(Theme::TEXT_MUTED)
                                         .small(),
                                 );

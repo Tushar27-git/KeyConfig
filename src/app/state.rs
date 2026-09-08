@@ -58,6 +58,9 @@ pub struct AppState {
     pub capture_active: Arc<AtomicBool>,
     pub show_manual_picker: bool,
     pub test_input_text: String,
+    pub swap_target_key: Option<VKey>,
+    pub matrix_new_source: Option<VKey>,
+    pub matrix_new_target: Option<VKey>,
     pub event_log: EventMonitor,
     pub rate_calc: RateCalculator,
     pub rate_stats: RateStats,
@@ -100,11 +103,14 @@ impl AppState {
             active_profile_id,
             active_profile_arc,
             pressed_keys: HashSet::new(),
-            selected_key: Some(VKey::CapsLock),
+            selected_key: Some(VKey::Backslash),
             capture_state: CaptureState::Idle,
             capture_active,
             show_manual_picker: false,
             test_input_text: String::new(),
+            swap_target_key: Some(VKey::Backspace),
+            matrix_new_source: Some(VKey::Backslash),
+            matrix_new_target: Some(VKey::Backspace),
             event_log: EventMonitor::new(1000),
             rate_calc: RateCalculator::new(128),
             rate_stats: RateStats::default(),
@@ -252,28 +258,23 @@ impl AppState {
 
     pub fn set_mapping(&mut self, source: VKey, target: MappingTarget) {
         if let Some(profile) = self.profiles.get_mut(&self.active_profile_id) {
-            if profile.is_readonly {
-                self.set_status("Cannot edit read-only 'Default' profile. Switch to Gaming/Work or create a new profile.");
-                return;
-            }
-
+            let desc = match target {
+                MappingTarget::Key(k) => format!("{:?} → {:?}", source, k),
+                MappingTarget::Block => format!("{:?} [BLOCKED]", source),
+            };
             profile.mappings.insert(source, target);
             *self.active_profile_arc.write() = profile.clone();
             let _ = self.storage.save_profile(profile);
+            self.set_status(&format!("✓ Applied to system: {}", desc));
         }
     }
 
     pub fn remove_mapping(&mut self, source: VKey) {
         if let Some(profile) = self.profiles.get_mut(&self.active_profile_id) {
-            if profile.is_readonly {
-                self.set_status("Cannot edit read-only 'Default' profile.");
-                return;
-            }
-
             profile.mappings.remove(&source);
             *self.active_profile_arc.write() = profile.clone();
             let _ = self.storage.save_profile(profile);
-            self.set_status(&format!("Reset mapping for {:?}", source));
+            self.set_status(&format!("✓ Reset mapping for {:?} (1:1 pass-through)", source));
         }
     }
 
@@ -282,16 +283,20 @@ impl AppState {
             return;
         }
         if let Some(profile) = self.profiles.get_mut(&self.active_profile_id) {
-            if profile.is_readonly {
-                self.set_status("Cannot edit read-only 'Default' profile. Switch to a custom profile.");
-                return;
-            }
-
             profile.mappings.insert(key_a, MappingTarget::Key(key_b));
             profile.mappings.insert(key_b, MappingTarget::Key(key_a));
             *self.active_profile_arc.write() = profile.clone();
             let _ = self.storage.save_profile(profile);
             self.set_status(&format!("✓ Swapped on system: {:?} ↔ {:?}", key_a, key_b));
+        }
+    }
+
+    pub fn clear_all_mappings(&mut self) {
+        if let Some(profile) = self.profiles.get_mut(&self.active_profile_id) {
+            profile.mappings.clear();
+            *self.active_profile_arc.write() = profile.clone();
+            let _ = self.storage.save_profile(profile);
+            self.set_status("✓ Cleared all mappings: All physical keys now pass through 1:1");
         }
     }
 

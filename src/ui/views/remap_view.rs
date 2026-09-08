@@ -42,7 +42,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
 
         ui.label(
-            RichText::new("Hardware-level interception via low-level Windows hook. Intercepts physical keypresses and synthesizes target keys via native SendInput.")
+            RichText::new("Hardware-level interception via low-level Windows hook (WH_KEYBOARD_LL). Intercepts physical keypresses and synthesizes target keys via native SendInput.")
                 .color(Theme::TEXT_MUTED)
                 .small(),
         );
@@ -62,11 +62,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 );
                 let edit_response = ui.add(
                     egui::TextEdit::singleline(&mut state.test_input_text)
-                        .hint_text("Click here and type to test remapped keys live (e.g. verify '\\' acts as Backspace)...")
+                        .hint_text("Click here and type to test remapped keys live across Windows (e.g. verify '\\' deletes as Backspace)...")
                         .desired_width(ui.available_width() - 80.0),
                 );
                 if edit_response.has_focus() {
-                    // While user is typing in test pad, ensure continuous redraw
                     ui.ctx().request_repaint();
                 }
                 if ui.button("Clear").clicked() {
@@ -77,23 +76,23 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
         ui.add_space(8.0);
 
-        let target_key = state.selected_key.unwrap_or(VKey::CapsLock);
+        let target_key = state.selected_key.unwrap_or(VKey::Backslash);
 
         // ==========================================
-        // 1. TARGET KEY CARD
+        // 1. TARGET SOURCE KEY CARD
         // ==========================================
         ui.group(|ui| {
             ui.set_width(ui.available_width());
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(
-                        RichText::new("TARGET SOURCE KEY:")
+                        RichText::new("TARGET PHYSICAL KEY:")
                             .color(Theme::TEXT_MUTED)
                             .small()
                             .monospace(),
                     );
                     ui.label(
-                        RichText::new(format!("{:?}", target_key))
+                        RichText::new(format!("{:?} ({})", target_key, target_key.label()))
                             .color(Theme::ACCENT_BLUE)
                             .strong()
                             .monospace()
@@ -105,6 +104,43 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             .monospace()
                             .small(),
                     );
+
+                    let active_profile = state.profiles.get(&state.active_profile_id);
+                    let current_target = active_profile.and_then(|p| p.mappings.get(&target_key));
+
+                    ui.separator();
+                    match current_target {
+                        Some(MappingTarget::Key(dest)) => {
+                            ui.label(
+                                RichText::new(format!("REMAPPED → {:?}", dest))
+                                    .color(Theme::ACCENT_BLUE)
+                                    .strong()
+                                    .monospace(),
+                            );
+                            if ui.button("↺ Reset").clicked() {
+                                state.remove_mapping(target_key);
+                            }
+                        }
+                        Some(MappingTarget::Block) => {
+                            ui.label(
+                                RichText::new("[KEY BLOCKED]")
+                                    .color(Theme::ACCENT_RED)
+                                    .strong()
+                                    .monospace(),
+                            );
+                            if ui.button("↺ Unblock").clicked() {
+                                state.remove_mapping(target_key);
+                            }
+                        }
+                        None => {
+                            ui.label(
+                                RichText::new("1:1 Pass-Through (Default)")
+                                    .color(Theme::TEXT_SECONDARY)
+                                    .monospace()
+                                    .small(),
+                            );
+                        }
+                    }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         match state.capture_state {
@@ -118,6 +154,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                     state.start_listening_target();
                                 }
                             }
+                        }
+
+                        if ui.button("✕ Block Key").clicked() {
+                            state.set_mapping(target_key, MappingTarget::Block);
                         }
                     });
                 });
@@ -160,70 +200,159 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     }
                     _ => {}
                 }
-            });
-        });
 
-        ui.add_space(8.0);
+                ui.add_space(6.0);
 
-        // ==========================================
-        // 2. REPLACEMENT ACTION CARD
-        // ==========================================
-        ui.group(|ui| {
-            ui.set_width(ui.available_width());
-            ui.vertical(|ui| {
+                // ==========================================
+                // 1-CLICK QUICK ASSIGN PRESETS
+                // ==========================================
+                ui.label(
+                    RichText::new("ASSIGN DESIRED OUTPUT KEY (1-Click Presets):")
+                        .color(Theme::TEXT_MUTED)
+                        .small()
+                        .monospace(),
+                );
+                ui.horizontal_wrapped(|ui| {
+                    let quick_keys = [
+                        (VKey::Backspace, "⌫ Backspace"),
+                        (VKey::Enter, "↵ Enter"),
+                        (VKey::Escape, "⎋ Esc"),
+                        (VKey::Delete, "⌦ Del"),
+                        (VKey::Tab, "⇥ Tab"),
+                        (VKey::Space, "Space"),
+                        (VKey::CapsLock, "Caps"),
+                        (VKey::ControlLeft, "Ctrl (L)"),
+                        (VKey::AltLeft, "Alt (L)"),
+                        (VKey::ShiftLeft, "Shift (L)"),
+                        (VKey::WinLeft, "⊞ Win"),
+                        (VKey::ArrowUp, "▲ Up"),
+                        (VKey::ArrowDown, "▼ Down"),
+                        (VKey::ArrowLeft, "◀ Left"),
+                        (VKey::ArrowRight, "▶ Right"),
+                        (VKey::VolumeMute, "🔇 Mute"),
+                        (VKey::VolumeDown, "🔉 Vol-"),
+                        (VKey::VolumeUp, "🔊 Vol+"),
+                    ];
+
+                    let current_target = state
+                        .profiles
+                        .get(&state.active_profile_id)
+                        .and_then(|p| p.mappings.get(&target_key))
+                        .cloned();
+
+                    for (vkey, label) in quick_keys {
+                        let is_current = match &current_target {
+                            Some(MappingTarget::Key(dest)) => *dest == vkey,
+                            _ => false,
+                        };
+
+                        let btn = if is_current {
+                            ui.button(
+                                RichText::new(label)
+                                    .color(Theme::ACCENT_BLUE)
+                                    .strong()
+                                    .monospace(),
+                            )
+                        } else {
+                            ui.button(RichText::new(label).monospace())
+                        };
+
+                        if btn.clicked() {
+                            state.set_mapping(target_key, MappingTarget::Key(vkey));
+                        }
+                    }
+                });
+
+                ui.add_space(6.0);
+
+                // ==========================================
+                // KEY INTERCHANGE / SWAPPING SECTION
+                // ==========================================
                 ui.horizontal(|ui| {
                     ui.label(
-                        RichText::new("CURRENT ASSIGNMENT:")
+                        RichText::new("INTERCHANGE / SWAP:")
                             .color(Theme::TEXT_MUTED)
                             .small()
                             .monospace(),
                     );
 
-                    let active_profile = state.profiles.get(&state.active_profile_id);
-                    let current_target = active_profile.and_then(|p| p.mappings.get(&target_key));
-
-                    match current_target {
-                        Some(MappingTarget::Key(dest)) => {
-                            ui.label(
-                                RichText::new(format!("REMAPPED → {:?}", dest))
-                                    .color(Theme::ACCENT_BLUE)
+                    if target_key == VKey::Backslash {
+                        if ui
+                            .button(
+                                RichText::new("⇄ SWAP: \\ ↔ Backspace")
+                                    .color(Theme::ACCENT_VIOLET)
                                     .strong()
                                     .monospace(),
-                            );
-                            if ui.button("↺ Reset to 1:1").clicked() {
-                                state.remove_mapping(target_key);
-                            }
+                            )
+                            .clicked()
+                        {
+                            state.swap_mappings(VKey::Backslash, VKey::Backspace);
                         }
-                        Some(MappingTarget::Block) => {
-                            ui.label(
-                                RichText::new("[KEY BLOCKED]")
-                                    .color(Theme::ACCENT_RED)
+                    } else if target_key == VKey::Backspace {
+                        if ui
+                            .button(
+                                RichText::new("⇄ SWAP: Backspace ↔ \\")
+                                    .color(Theme::ACCENT_VIOLET)
                                     .strong()
                                     .monospace(),
-                            );
-                            if ui.button("↺ Unblock").clicked() {
-                                state.remove_mapping(target_key);
-                            }
+                            )
+                            .clicked()
+                        {
+                            state.swap_mappings(VKey::Backspace, VKey::Backslash);
                         }
-                        None => {
-                            ui.label(
-                                RichText::new("1:1 Pass-Through (Default)")
-                                    .color(Theme::TEXT_SECONDARY)
+                    } else if target_key == VKey::CapsLock {
+                        if ui
+                            .button(
+                                RichText::new("⇄ SWAP: CapsLock ↔ Ctrl")
+                                    .color(Theme::ACCENT_VIOLET)
+                                    .strong()
                                     .monospace(),
-                            );
+                            )
+                            .clicked()
+                        {
+                            state.swap_mappings(VKey::CapsLock, VKey::ControlLeft);
+                        }
+                        if ui
+                            .button(
+                                RichText::new("⇄ SWAP: CapsLock ↔ Esc")
+                                    .color(Theme::ACCENT_VIOLET)
+                                    .strong()
+                                    .monospace(),
+                            )
+                            .clicked()
+                        {
+                            state.swap_mappings(VKey::CapsLock, VKey::Escape);
                         }
                     }
 
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("✕ Block Key").clicked() {
-                            state.set_mapping(target_key, MappingTarget::Block);
-                        }
-                    });
+                    // Swap With Any Key Selector
+                    let swap_target = state.swap_target_key.unwrap_or(VKey::Backspace);
+                    egui::ComboBox::from_id_salt("remap_swap_combo")
+                        .selected_text(swap_target.name())
+                        .width(130.0)
+                        .show_ui(ui, |ui| {
+                            for &k in VKey::all_assignable() {
+                                if k != target_key {
+                                    ui.selectable_value(&mut state.swap_target_key, Some(k), k.name());
+                                }
+                            }
+                        });
+
+                    if ui
+                        .button(
+                            RichText::new(format!("⇄ Swap with {:?}", swap_target))
+                                .color(Theme::ACCENT_VIOLET)
+                                .monospace(),
+                        )
+                        .clicked()
+                    {
+                        state.swap_mappings(target_key, swap_target);
+                    }
                 });
 
-                ui.add_space(8.0);
+                ui.add_space(6.0);
 
-                // Main Capture Replacement Action
+                // Physical Capture Replacement Flow
                 match state.capture_state {
                     CaptureState::ListeningForReplacement => {
                         render_listening_box(ui, "PRESS ANY PHYSICAL KEY FOR REPLACEMENT...");
@@ -275,7 +404,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                         state.confirm_captured_replacement();
                                     }
 
-                                    // Interchanging / Key Swapping Feature!
                                     let swap_btn = ui.button(
                                         RichText::new(format!(
                                             "⇄ SWAP KEYS ({:?} ↔ {:?})",
@@ -311,7 +439,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 state.start_listening_replacement();
                             }
                             ui.label(
-                                RichText::new("(Press any key on hardware to bind)")
+                                RichText::new("(Press any hardware key to bind live)")
                                     .color(Theme::TEXT_MUTED)
                                     .small(),
                             );
@@ -324,120 +452,150 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(8.0);
 
         // ==========================================
-        // 3. MANUAL FALLBACK KEY PICKER (Collapsed)
+        // 2. ADD NEW REMAPPING RULE BUILDER
         // ==========================================
-        let toggle_label = if state.show_manual_picker {
-            "▼ Hide Manual Key Picker"
-        } else {
-            "▶ Or choose replacement manually (accessibility fallback)"
+        ui.group(|ui| {
+            ui.set_width(ui.available_width());
+            ui.vertical(|ui| {
+                ui.label(
+                    RichText::new("ADD NEW REMAPPING RULE TO MATRIX:")
+                        .color(Theme::TEXT_PRIMARY)
+                        .strong()
+                        .monospace()
+                        .size(13.0),
+                );
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("When I press:").color(Theme::TEXT_MUTED).small());
+
+                    let src = state.matrix_new_source.unwrap_or(VKey::Backslash);
+                    egui::ComboBox::from_id_salt("matrix_src_combo")
+                        .selected_text(src.name())
+                        .width(140.0)
+                        .show_ui(ui, |ui| {
+                            for &k in VKey::all_assignable() {
+                                ui.selectable_value(&mut state.matrix_new_source, Some(k), k.name());
+                            }
+                        });
+
+                    ui.label(RichText::new("➔  Produce:").color(Theme::TEXT_MUTED).strong());
+
+                    let dest = state.matrix_new_target.unwrap_or(VKey::Backspace);
+                    egui::ComboBox::from_id_salt("matrix_dest_combo")
+                        .selected_text(dest.name())
+                        .width(140.0)
+                        .show_ui(ui, |ui| {
+                            for &k in VKey::all_assignable() {
+                                ui.selectable_value(&mut state.matrix_new_target, Some(k), k.name());
+                            }
+                        });
+
+                    if ui
+                        .button(
+                            RichText::new("➕ Add / Update Remap")
+                                .color(Theme::ACCENT_BLUE)
+                                .strong(),
+                        )
+                        .clicked()
+                    {
+                        state.set_mapping(src, MappingTarget::Key(dest));
+                    }
+
+                    if ui
+                        .button(
+                            RichText::new(format!("⇄ Swap Both ({:?} ↔ {:?})", src, dest))
+                                .color(Theme::ACCENT_VIOLET)
+                                .strong(),
+                        )
+                        .clicked()
+                    {
+                        state.swap_mappings(src, dest);
+                    }
+                });
+            });
+        });
+
+        ui.add_space(8.0);
+
+        // ==========================================
+        // 3. ACTIVE REMAPPED KEYS TABLE (Matrix)
+        // ==========================================
+        let mappings_clone = {
+            let prof = state.profiles.get(&state.active_profile_id);
+            prof.map(|p| p.mappings.clone()).unwrap_or_default()
         };
 
-        if ui.button(RichText::new(toggle_label).small().color(Theme::TEXT_MUTED)).clicked() {
-            state.show_manual_picker = !state.show_manual_picker;
-        }
-
-        if state.show_manual_picker {
-            ui.add_space(4.0);
-            ui.group(|ui| {
-                ui.set_width(ui.available_width());
-                egui::ScrollArea::vertical()
-                    .id_salt("remap_replacement_key_grid")
-                    .max_height(160.0)
-                    .show(ui, |ui| {
-                        ui.label(RichText::new("Common Controls:").small().color(Theme::TEXT_MUTED));
-                        ui.horizontal_wrapped(|ui| {
-                            let common_targets = [
-                                VKey::Escape, VKey::CapsLock, VKey::ControlLeft, VKey::ControlRight,
-                                VKey::ShiftLeft, VKey::ShiftRight, VKey::AltLeft, VKey::AltRight,
-                                VKey::Backspace, VKey::Enter, VKey::Delete, VKey::Tab,
-                                VKey::ArrowUp, VKey::ArrowDown, VKey::ArrowLeft, VKey::ArrowRight,
-                                VKey::Home, VKey::End, VKey::PageUp, VKey::PageDown,
-                                VKey::VolumeMute, VKey::VolumeDown, VKey::VolumeUp,
-                                VKey::MediaPlayPause, VKey::MediaNext, VKey::MediaPrev,
-                            ];
-
-                            for target in common_targets {
-                                if ui.button(format!("{:?}", target)).clicked() {
-                                    state.set_mapping(target_key, MappingTarget::Key(target));
-                                }
-                            }
-                        });
-
-                        ui.add_space(6.0);
-                        ui.label(RichText::new("Alphanumeric Keys:").small().color(Theme::TEXT_MUTED));
-                        ui.horizontal_wrapped(|ui| {
-                            let alpha = [
-                                VKey::KeyA, VKey::KeyB, VKey::KeyC, VKey::KeyD, VKey::KeyE, VKey::KeyF,
-                                VKey::KeyG, VKey::KeyH, VKey::KeyI, VKey::KeyJ, VKey::KeyK, VKey::KeyL,
-                                VKey::KeyM, VKey::KeyN, VKey::KeyO, VKey::KeyP, VKey::KeyQ, VKey::KeyR,
-                                VKey::KeyS, VKey::KeyT, VKey::KeyU, VKey::KeyV, VKey::KeyW, VKey::KeyX,
-                                VKey::KeyY, VKey::KeyZ,
-                            ];
-                            for k in alpha {
-                                if ui.button(k.label()).clicked() {
-                                    state.set_mapping(target_key, MappingTarget::Key(k));
-                                }
-                            }
-                        });
-                    });
-            });
-        }
-
-        ui.add_space(10.0);
-
-        // ==========================================
-        // 4. ACTIVE REMAPPED KEYS TABLE
-        // ==========================================
         ui.horizontal(|ui| {
             ui.heading(
-                RichText::new("ACTIVE REMAPPINGS IN CURRENT PROFILE")
-                    .size(14.0)
-                    .monospace()
-                    .color(Theme::TEXT_PRIMARY),
+                RichText::new(format!(
+                    "ACTIVE REMAPPINGS IN CURRENT PROFILE ({})",
+                    mappings_clone.len()
+                ))
+                .size(14.0)
+                .monospace()
+                .color(Theme::TEXT_PRIMARY),
             );
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.button("💾 Apply to System").clicked() {
                     state.save_and_apply_to_system();
                 }
+
+                if !mappings_clone.is_empty() {
+                    if ui.button(RichText::new("🗑 Clear All").color(Theme::ACCENT_RED)).clicked() {
+                        state.clear_all_mappings();
+                    }
+                }
             });
         });
         ui.add_space(4.0);
 
-        let mappings_clone = {
-            let prof = state.profiles.get(&state.active_profile_id);
-            prof.map(|p| p.mappings.clone()).unwrap_or_default()
-        };
-
         if mappings_clone.is_empty() {
-            ui.label(
-                RichText::new("No custom mappings in this profile. All physical keys pass through 1:1.")
-                    .color(Theme::TEXT_MUTED)
-                    .small(),
-            );
+            ui.group(|ui| {
+                ui.set_width(ui.available_width());
+                ui.label(
+                    RichText::new("No custom mappings in this profile. All physical keys pass through 1:1.\nUse the controls above to assign Backspace, swap keys, or capture any keystroke.")
+                        .color(Theme::TEXT_MUTED)
+                        .small(),
+                );
+            });
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("remap_active_mappings_list")
-                .max_height(180.0)
+                .max_height(200.0)
                 .show(ui, |ui| {
                     for (src, target) in mappings_clone {
                         ui.group(|ui| {
                             ui.set_width(ui.available_width());
                             ui.horizontal(|ui| {
                                 ui.label(
-                                    RichText::new(format!("{:?}", src))
+                                    RichText::new(format!("{:?} ({})", src, src.label()))
                                         .strong()
                                         .monospace(),
                                 );
-                                ui.label(RichText::new("→").color(Theme::TEXT_MUTED));
+                                ui.label(RichText::new("→").color(Theme::TEXT_MUTED).strong());
+
                                 match target {
                                     MappingTarget::Key(dest) => {
                                         ui.label(
-                                            RichText::new(format!("{:?}", dest))
+                                            RichText::new(format!("{:?} ({})", dest, dest.label()))
                                                 .color(Theme::ACCENT_BLUE)
                                                 .strong()
                                                 .monospace(),
                                         );
+
+                                        // 1-Click Swap Button for each active mapping
+                                        if ui
+                                            .button(
+                                                RichText::new(format!("⇄ Swap {:?} ↔ {:?}", src, dest))
+                                                    .color(Theme::ACCENT_VIOLET)
+                                                    .small(),
+                                            )
+                                            .clicked()
+                                        {
+                                            state.swap_mappings(src, dest);
+                                        }
                                     }
                                     MappingTarget::Block => {
                                         ui.label(
