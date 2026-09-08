@@ -42,15 +42,15 @@ impl<'a> KeyboardRenderer<'a> {
 
         let mut clicked_key = None;
 
-        // Background chassis with sharp retro edges
+        // Background chassis with sleek rounded borders
         painter.rect_filled(
             rect.expand(6.0),
-            CornerRadius::same(1),
-            Color32::from_rgb(0x0A, 0x0A, 0x0F),
+            CornerRadius::same(6),
+            Color32::from_rgb(0x0C, 0x0D, 0x14),
         );
         painter.rect_stroke(
             rect.expand(6.0),
-            CornerRadius::same(1),
+            CornerRadius::same(6),
             Stroke::new(1.0_f32, Theme::BORDER_SUBTLE),
             StrokeKind::Inside,
         );
@@ -112,25 +112,25 @@ impl<'a> KeyboardRenderer<'a> {
         if is_selected {
             painter.rect_stroke(
                 rect.expand(1.5),
-                CornerRadius::same(1),
-                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xA9, 0xFC, 80)),
+                CornerRadius::same(3),
+                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xA9, 0xFC, 90)),
                 StrokeKind::Outside,
             );
         } else if is_pressed {
             painter.rect_stroke(
                 rect.expand(1.5),
-                CornerRadius::same(1),
-                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xFC, 0xA0, 100)),
+                CornerRadius::same(3),
+                Stroke::new(1.0_f32, Color32::from_rgba_premultiplied(0x3D, 0xFC, 0xA0, 110)),
                 StrokeKind::Outside,
             );
         }
 
         let base_fill = if is_pressed {
-            Color32::from_rgb(0x1B, 0x48, 0x38) // CRT phosphor active state
+            Color32::from_rgb(0x1E, 0x4D, 0x3D) // CRT phosphor active state
         } else if is_selected {
-            Color32::from_rgb(0x18, 0x2A, 0x44) // Electric blue base
+            Color32::from_rgb(0x1B, 0x2D, 0x4A) // Electric blue base
         } else if is_hovered {
-            Color32::from_rgb(0x22, 0x22, 0x32)
+            Color32::from_rgb(0x25, 0x27, 0x3A)
         } else {
             Theme::BG_KEYCAP
         };
@@ -145,18 +145,18 @@ impl<'a> KeyboardRenderer<'a> {
             Stroke::new(1.0_f32, Theme::BORDER_SUBTLE)
         };
 
-        painter.rect_filled(rect, CornerRadius::same(1), base_fill);
-        painter.rect_stroke(rect, CornerRadius::same(1), border_stroke, StrokeKind::Inside);
+        painter.rect_filled(rect, CornerRadius::same(3), base_fill);
+        painter.rect_stroke(rect, CornerRadius::same(3), border_stroke, StrokeKind::Inside);
 
         let inset = rect.shrink2(Vec2::new(2.5, 2.5));
         let top_fill = if is_pressed {
-            Color32::from_rgb(0x22, 0x64, 0x4E)
+            Color32::from_rgb(0x24, 0x66, 0x50)
         } else if is_selected {
-            Color32::from_rgb(0x15, 0x24, 0x3A)
+            Color32::from_rgb(0x18, 0x28, 0x40)
         } else {
-            Color32::from_rgb(0x12, 0x12, 0x1B)
+            Color32::from_rgb(0x14, 0x15, 0x22)
         };
-        painter.rect_filled(inset, CornerRadius::same(1), top_fill);
+        painter.rect_filled(inset, CornerRadius::same(2), top_fill);
 
         let text_color = if is_pressed {
             Color32::WHITE

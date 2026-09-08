@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use parking_lot::RwLock;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
