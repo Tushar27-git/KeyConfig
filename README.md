@@ -36,6 +36,20 @@ Engineered with a focus on hardware transparency, low overhead, and safety, Thea
   - Shipped with **Default** (1:1 pass-through), **Gaming** (WinKey blocked, CapsLock → Ctrl), and **Work** (CapsLock → Esc) profiles.
   - Create and edit custom profiles with atomic file persistence (`.tmp` write followed by atomic rename) to `%APPDATA%\Theasus\profiles\`.
 
+- **Windows Auto-Startup (Boot, Wake & Restart)**:
+  - Full native Windows autorun integration via `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+  - Non-elevated standard user execution without irritating UAC Administrator prompts.
+  - One-click configuration directly in the **Settings** view with status indicators and mode selection (**Normal Window** vs **Start Minimized**).
+  - Standalone double-clickable scripts (`Enable_AutoStartup.bat` and `Disable_AutoStartup.bat`) and CLI flags (`--register-startup`, `--unregister-startup`, `--minimized`).
+  - Seamless Sleep/Wake and Restart handling: low-level input hooks and profile remapping activate immediately as soon as your Windows user session starts.
+
+- **Windows Start Menu & Search Integration**:
+  - Automatically installed into `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Theasus.lnk`.
+  - Full Windows Search indexing: search "Theasus" or "thesus" directly from the Windows taskbar or Start Menu to launch immediately.
+  - Custom high-resolution icon (`assets/theasus.ico`) embedded for Start Menu tiles and search previews.
+  - Windows `App Paths` registered (`HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths`): supports launching via `Win + R` Run dialog.
+  - One-click setup in **Settings** or via `Install_StartMenu_Shortcut.bat` and CLI flag `--install-shortcut`.
+
 - **Firmware & Protocol Isolation**:
   - SinoWealth MCU vendor protocol writes are quarantined (`src/hid_protocol/mod.rs`) until verified via USB capture, protecting onboard controller EEPROM from bricking.
 

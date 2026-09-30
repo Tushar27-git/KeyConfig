@@ -6,4 +6,5 @@ pub mod input;
 pub mod keyboard_visual;
 pub mod profiles;
 pub mod remap;
+pub mod startup;
 pub mod ui;

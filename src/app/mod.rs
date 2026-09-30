@@ -24,12 +24,18 @@ impl KeyboardApp {
         device_rx: Receiver<String>,
         capture_active: Arc<AtomicBool>,
         active_profile_arc: Arc<RwLock<Profile>>,
+        start_minimized: bool,
         cc: &eframe::CreationContext<'_>,
     ) -> Self {
         Theme::apply(&cc.egui_ctx);
 
+        let mut state = AppState::new(event_rx, device_rx, capture_active, active_profile_arc);
+        if start_minimized {
+            state.start_minimized_pending = true;
+        }
+
         Self {
-            state: AppState::new(event_rx, device_rx, capture_active, active_profile_arc),
+            state,
             window: MainWindow::new(),
         }
     }
@@ -39,6 +45,11 @@ impl eframe::App for KeyboardApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Drain incoming events from Raw Input and Low-Level Hook threads
         let had_activity = self.state.process_incoming_events();
+
+        if self.state.start_minimized_pending {
+            self.state.start_minimized_pending = false;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+        }
 
         // If activity arrived, capturing, or keys are pressed, request immediate redraw for instant responsiveness
         if had_activity || self.state.capture_state.is_listening() || !self.state.pressed_keys.is_empty() {

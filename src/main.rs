@@ -23,6 +23,52 @@ fn main() -> Result<(), eframe::Error> {
         )
         .init();
 
+    let args: Vec<String> = std::env::args().collect();
+
+    // Fast-path CLI registration management (no GUI or hook thread spawn required)
+    if args.iter().any(|a| a == "--register-startup") {
+        let mode = if args.iter().any(|a| a == "--minimized") {
+            theasus::startup::StartupLaunchMode::Minimized
+        } else {
+            theasus::startup::StartupLaunchMode::Normal
+        };
+        match theasus::startup::StartupManager::enable(mode) {
+            Ok(_) => {
+                tracing::info!("Registered Theasus auto-startup ({})", mode.as_str());
+            }
+            Err(e) => {
+                tracing::error!("Failed to register auto-startup: {:?}", e);
+            }
+        }
+        return Ok(());
+    }
+    if args.iter().any(|a| a == "--unregister-startup") {
+        match theasus::startup::StartupManager::disable() {
+            Ok(_) => tracing::info!("Unregistered Theasus auto-startup"),
+            Err(e) => tracing::error!("Failed to unregister auto-startup: {:?}", e),
+        }
+        return Ok(());
+    }
+    if args.iter().any(|a| a == "--install-shortcut") {
+        if let Ok(exe) = theasus::startup::StartupManager::get_recommended_executable() {
+            let working_dir = exe.parent().unwrap_or(std::path::Path::new("."));
+            let icon_candidate = working_dir.join("assets").join("theasus.ico");
+            let icon_path = if icon_candidate.is_file() {
+                Some(icon_candidate.as_path())
+            } else {
+                None
+            };
+            let _ = theasus::startup::ShortcutManager::install(&exe, working_dir, icon_path);
+        }
+        return Ok(());
+    }
+    if args.iter().any(|a| a == "--uninstall-shortcut") {
+        let _ = theasus::startup::ShortcutManager::uninstall();
+        return Ok(());
+    }
+
+    let start_minimized = args.iter().any(|a| a == "--minimized");
+
     tracing::info!("Starting Theasus Keyboard Control Center (Raw Input Auto-Detection)...");
 
     // Channels for low-level input events and physical device path strings
@@ -66,11 +112,13 @@ fn main() -> Result<(), eframe::Error> {
     };
 
     // Configure Native Win32 Window
+    let viewport = egui::ViewportBuilder::default()
+        .with_title("Theasus — Keyboard Control Center")
+        .with_inner_size([1080.0, 740.0])
+        .with_min_inner_size([880.0, 560.0]);
+
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Theasus — Keyboard Control Center")
-            .with_inner_size([1080.0, 740.0])
-            .with_min_inner_size([880.0, 560.0]),
+        viewport,
         ..Default::default()
     };
 
@@ -83,6 +131,7 @@ fn main() -> Result<(), eframe::Error> {
                 device_rx,
                 capture_active,
                 active_profile_arc,
+                start_minimized,
                 cc,
             )))
         }),

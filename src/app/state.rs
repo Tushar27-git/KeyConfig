@@ -6,6 +6,7 @@ use crate::input::normalize::{InputEvent, KeyState};
 use crate::profiles::model::Profile;
 use crate::profiles::store::ProfileStore;
 use crate::remap::rules::MappingTarget;
+use crate::startup::{ShortcutManager, StartupLaunchMode, StartupManager, StartupStatus};
 use crossbeam_channel::Receiver;
 use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
@@ -69,6 +70,10 @@ pub struct AppState {
     pub event_rx: Receiver<InputEvent>,
     pub device_rx: Receiver<String>,
     pub status_message: Option<(String, std::time::Instant)>,
+    pub start_minimized_pending: bool,
+    pub startup_status: StartupStatus,
+    pub selected_startup_mode: StartupLaunchMode,
+    pub shortcut_installed: bool,
 }
 
 impl AppState {
@@ -95,6 +100,15 @@ impl AppState {
         // Start background hotplug thread
         DeviceManager::start_hotplug_monitor(hotplug_trigger.clone(), stop_flag.clone());
 
+        let startup_status = StartupManager::query_status().unwrap_or(StartupStatus {
+            enabled: false,
+            command: None,
+            launch_mode: StartupLaunchMode::Normal,
+            is_current_exe: false,
+            detected_exe: StartupManager::get_recommended_executable().ok(),
+        });
+        let selected_startup_mode = startup_status.launch_mode;
+
         Self {
             active_view: NavView::Keyboard,
             device_manager: DeviceManager::new(),
@@ -119,6 +133,10 @@ impl AppState {
             event_rx,
             device_rx,
             status_message: None,
+            start_minimized_pending: false,
+            startup_status,
+            selected_startup_mode,
+            shortcut_installed: ShortcutManager::is_installed(),
         }
     }
 
@@ -353,6 +371,73 @@ impl AppState {
         self.profiles.remove(id);
         if self.active_profile_id == id {
             self.set_active_profile("default");
+        }
+    }
+
+    pub fn refresh_startup_status(&mut self) {
+        if let Ok(status) = StartupManager::query_status() {
+            self.selected_startup_mode = status.launch_mode;
+            self.startup_status = status;
+        }
+    }
+
+    pub fn enable_autostart(&mut self) {
+        match StartupManager::enable(self.selected_startup_mode) {
+            Ok(_) => {
+                self.refresh_startup_status();
+                self.set_status(&format!(
+                    "✓ Auto-startup enabled ({})",
+                    self.selected_startup_mode.as_str()
+                ));
+            }
+            Err(e) => {
+                self.set_status(&format!("Failed to enable auto-startup: {:?}", e));
+            }
+        }
+    }
+
+    pub fn disable_autostart(&mut self) {
+        match StartupManager::disable() {
+            Ok(_) => {
+                self.refresh_startup_status();
+                self.set_status("✓ Auto-startup disabled (removed from Windows Run)");
+            }
+            Err(e) => {
+                self.set_status(&format!("Failed to disable auto-startup: {:?}", e));
+            }
+        }
+    }
+
+    pub fn install_shortcut(&mut self) {
+        if let Ok(exe) = StartupManager::get_recommended_executable() {
+            let working_dir = exe.parent().unwrap_or(std::path::Path::new("."));
+            let icon_candidate = working_dir.join("assets").join("theasus.ico");
+            let icon_path = if icon_candidate.is_file() {
+                Some(icon_candidate.as_path())
+            } else {
+                None
+            };
+            match ShortcutManager::install(&exe, working_dir, icon_path) {
+                Ok(_) => {
+                    self.shortcut_installed = true;
+                    self.set_status("✓ Added to Windows Start Menu (Searchable by pressing Win key)");
+                }
+                Err(e) => {
+                    self.set_status(&format!("Failed to install Start Menu shortcut: {:?}", e));
+                }
+            }
+        }
+    }
+
+    pub fn uninstall_shortcut(&mut self) {
+        match ShortcutManager::uninstall() {
+            Ok(_) => {
+                self.shortcut_installed = false;
+                self.set_status("✓ Removed Start Menu shortcuts & App Paths");
+            }
+            Err(e) => {
+                self.set_status(&format!("Failed to remove Start Menu shortcuts: {:?}", e));
+            }
         }
     }
 
